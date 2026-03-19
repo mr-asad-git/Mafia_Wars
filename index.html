@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#030108">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Mafia Protocol</title>
+  <title>Mafia Wars</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <link rel="stylesheet" href="style.css">
@@ -323,6 +323,8 @@
                 <div id="cRoleDesc" class="mt-2 uppercase tracking-widest leading-relaxed"
                   style="font-size:9px;color:rgba(255,255,255,0.38);font-family:'Cinzel',serif;letter-spacing:0.12em">
                 </div>
+                <!-- Extra info (doctor hearts shown here) -->
+                <div id="cRoleExtra" class="text-center mt-3"></div>
               </div>
             </div>
 
@@ -351,14 +353,12 @@
     <!-- ══════════════════════════════════════════
        GAME SCREEN
     ══════════════════════════════════════════ -->
-    <div id="s-game" class="screen hidden p-3 gap-3" style="padding-top:8px">
+    <div id="s-game" class="screen hidden p-3 gap-2" style="padding-top:8px">
 
       <!-- Spectator Banner — shown when eliminated -->
       <div id="eliminatedOverlay" class="hidden" style="
         position:absolute;top:0;left:0;right:0;z-index:50;
-        text-align:center;
-        padding:8px 16px 9px;
-        pointer-events:none;
+        text-align:center;padding:8px 16px 9px;pointer-events:none;
       ">
         <div class="flex items-center justify-center gap-2">
           <span class="spectator-pulse" style="font-size:14px">👻</span>
@@ -388,56 +388,92 @@
         </div>
       </div>
 
-      <!-- Role + Allies strip -->
-      <div class="flex items-center justify-between px-1 min-h-[22px]">
-        <div id="myRoleBadge"></div>
-        <div id="alliesTxt" class="text-xs font-semibold hidden"
-          style="color:#ff7766;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.08em"></div>
+      <!-- Role + Doctor Hearts + Allies strip -->
+      <div class="flex items-center justify-between px-1" style="min-height:24px">
+        <div class="flex items-center gap-2">
+          <div id="myRoleBadge"></div>
+          <span id="doctorHearts" style="font-size:15px;display:none;line-height:1;letter-spacing:1px"></span>
+        </div>
+        <div id="alliesTxt" class="hidden"
+          style="color:#ff7766;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.08em;font-weight:600"></div>
       </div>
 
-      <!-- Chat panel -->
-      <div class="glass-strong rounded-2xl flex flex-col overflow-hidden" style="flex:1;min-height:0">
-        <div id="chatLog" class="flex flex-col gap-2 p-3 overflow-y-auto" style="flex:1;min-height:0">
-          <div class="bubble bubble-sys">The parlor opens — awaiting phase</div>
+      <!-- Action panel — takes all remaining space -->
+      <div id="actionArea" class="glass-strong rounded-2xl overflow-hidden"
+        style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <!-- Header with chat toggle -->
+        <div class="flex items-center justify-between px-4 py-2"
+          style="border-bottom:1px solid rgba(201,147,42,0.08);flex-shrink:0">
+          <p id="actionPrompt" class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.18em;text-transform:uppercase">Select
+            Target</p>
+          <div class="flex items-center gap-2">
+            <span id="actionStatus" class="cinzel hidden"
+              style="font-size:9px;font-weight:700;color:#4ade80;letter-spacing:0.1em">✓ CONFIRMED</span>
+            <!-- Chat toggle button -->
+            <button id="chatToggleBtn" onclick="toggleChat()" title="Open chat" style="
+              position:relative;width:30px;height:30px;border-radius:9px;
+              background:rgba(201,147,42,0.1);border:1px solid rgba(201,147,42,0.22);
+              cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;
+              transition:background 0.2s,border-color 0.2s,box-shadow 0.2s;flex-shrink:0;
+            ">
+              💬
+              <span id="chatBadge" style="
+                display:none;position:absolute;top:-5px;right:-5px;
+                min-width:16px;height:16px;border-radius:99px;
+                background:#c0392b;color:#fff;font-size:9px;font-weight:700;
+                font-family:'JetBrains Mono',monospace;
+                align-items:center;justify-content:center;padding:0 3px;line-height:1;
+              ">0</span>
+            </button>
+          </div>
         </div>
-        <!-- Chat input -->
-        <div id="chatWrap" class="hidden p-2 flex items-center gap-2"
-          style="border-top:1px solid rgba(201,147,42,0.1);background:rgba(10,4,20,0.6)">
-          <span id="mafiaLabel" class="hidden text-xs font-bold px-2 shrink-0 cinzel"
-            style="color:#ff7766;letter-spacing:0.1em">SYNDICATE</span>
-          <input id="chatInp" class="flex-1 bg-transparent text-sm focus:outline-none py-1.5 px-2"
-            style="color:var(--text);caret-color:var(--gld)" placeholder="Speak your mind…" autocomplete="off">
-          <button onclick="sendChat()" style="flex-shrink:0;width:36px;height:36px;border-radius:12px;
-              background:linear-gradient(135deg,var(--gld),var(--gld-dim));
-              border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-              transition:transform 0.15s,box-shadow 0.15s;
-              box-shadow:0 0 10px rgba(201,147,42,0.3)"
-            onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 0 20px rgba(201,147,42,0.5)'"
-            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 0 10px rgba(201,147,42,0.3)'">
-            <svg width="14" height="14" fill="none" stroke="#100800" stroke-width="2.5" viewBox="0 0 24 24">
-              <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
-            </svg>
+        <!-- Player grid — fills available space -->
+        <div id="playerGrid" class="pgrid p-3" style="flex:1;overflow-y:auto;min-height:0"></div>
+        <!-- Submit -->
+        <div class="px-3 pb-3" style="flex-shrink:0">
+          <button id="actionBtn" class="btn btn-primary" onclick="submitAction()" disabled
+            style="font-size:11px;padding:12px">
+            Waiting…
           </button>
         </div>
       </div>
 
-      <!-- Action panel -->
-      <div id="actionArea" class="glass-strong rounded-2xl overflow-hidden">
-        <!-- Action header -->
-        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid rgba(201,147,42,0.08)">
-          <p id="actionPrompt" class="cinzel"
-            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.18em;text-transform:uppercase">Select
-            Target</p>
-          <span id="actionStatus" class="cinzel hidden"
-            style="font-size:9px;font-weight:700;color:#4ade80;letter-spacing:0.1em">✓ CONFIRMED</span>
+      <!-- Chat Overlay (slides up from bottom) -->
+      <div id="chatOverlay">
+        <div class="chat-overlay-header">
+          <div class="flex items-center gap-2">
+            <span style="font-size:14px">💬</span>
+            <span class="cinzel"
+              style="font-size:11px;color:var(--gld-bright);letter-spacing:0.12em;text-transform:uppercase">The
+              Parlor</span>
+            <span id="mafiaLabel" class="hidden cinzel" style="font-size:9px;font-weight:700;color:#ff7766;letter-spacing:0.12em;
+              background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.3);
+              padding:2px 8px;border-radius:99px">SYNDICATE</span>
+          </div>
+          <button onclick="toggleChat()" style="
+            width:26px;height:26px;border-radius:8px;
+            background:rgba(255,255,255,0.06);border:none;cursor:pointer;
+            color:var(--text-dim);font-size:14px;
+            display:flex;align-items:center;justify-content:center;
+            transition:background 0.15s;">✕</button>
         </div>
-        <!-- Player grid -->
-        <div id="playerGrid" class="pgrid p-3" style="max-height:176px;overflow-y:auto"></div>
-        <!-- Submit button -->
-        <div class="px-3 pb-3">
-          <button id="actionBtn" class="btn btn-primary" onclick="submitAction()" disabled
-            style="font-size:11px;padding:13px">
-            Waiting…
+        <div id="chatLog" class="flex flex-col gap-2 p-3 overflow-y-auto" style="flex:1;min-height:0">
+          <div class="bubble bubble-sys">The parlor opens — awaiting phase</div>
+        </div>
+        <div id="chatWrap" class="hidden p-2 flex items-center gap-2"
+          style="border-top:1px solid rgba(201,147,42,0.1);background:rgba(10,4,20,0.6);flex-shrink:0">
+          <input id="chatInp" class="flex-1 bg-transparent text-sm focus:outline-none py-1.5 px-2"
+            style="color:var(--text);caret-color:var(--gld)" placeholder="Speak your mind…" autocomplete="off">
+          <button onclick="sendChat()" style="flex-shrink:0;width:34px;height:34px;border-radius:11px;
+              background:linear-gradient(135deg,var(--gld),var(--gld-dim));
+              border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+              transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 0 10px rgba(201,147,42,0.3)"
+            onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 0 20px rgba(201,147,42,0.5)'"
+            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 0 10px rgba(201,147,42,0.3)'">
+            <svg width="13" height="13" fill="none" stroke="#100800" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
+            </svg>
           </button>
         </div>
       </div>

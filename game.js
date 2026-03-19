@@ -39,7 +39,10 @@ const G = {
   night: { mafiaVotes: {}, docSave: null, copTarget: null },
   dayVotes: {}, dayVoteCount: 0,
   acksNeeded: 0, acksGot: 0,
-  timerColor: '#ffffff'
+  timerColor: '#ffffff',
+  chatOpen: false, chatUnread: 0,
+  docSelfSavesLeft: 2,
+  kicked: false
 };
 
 const BOT_NAMES = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
@@ -270,6 +273,7 @@ function joinRoom() {
 
 // ── MESSAGE HANDLER ───────────────────────────────────
 function onMsg(msg) {
+  if (G.kicked) return;
   const { type, from, payload } = msg;
 
   // ─ HOST-only handlers ─────────────────────────────
@@ -307,6 +311,7 @@ function onMsg(msg) {
   else if (type === 'END') showEnd(payload.winner, payload.reason, payload.players, payload.mafiaWinners);
   else if (type === 'COP_RESULT' && payload.to === G.myId)
     appendChat('🔍 Intel', payload.msg, false, true);
+  else if (type === 'KICKED') onKicked(payload);
 }
 
 // ── STATE BROADCAST FROM HOST ─────────────────────────
@@ -333,6 +338,12 @@ function updateLobbyUI() {
       `<span style="flex:1;font-size:14px;font-weight:500;color:${p.id === G.myId ? '#fff' : '#d4d4d8'}">${p.name}</span>` +
       (p.bot ? `<span class="tag tag-neutral">BOT</span>` : '') +
       (p.id === G.myId ? `<span class="tag tag-neutral">YOU</span>` : '');
+    if (G.isHost && G.phaseIdx === -1 && p.id !== G.myId) {
+      const rb = document.createElement('button');
+      rb.className = 'remove-btn'; rb.title = 'Remove player'; rb.textContent = '✕';
+      rb.onclick = () => removePlayer(p.id);
+      li.appendChild(rb);
+    }
     list.appendChild(li);
   });
 
@@ -348,6 +359,55 @@ function updateLobbyUI() {
       btn.disabled = true;
       btn.textContent = `Awaiting players (${G.players.length}/${total})…`;
     }
+  }
+}
+
+// ── KICK PLAYER ───────────────────────────────────────
+function removePlayer(playerId) {
+  if (!G.isHost || G.phaseIdx !== -1) return;
+  NET.toAll({ type: 'KICKED', payload: { id: playerId } });
+  G.players = G.players.filter(p => p.id !== playerId);
+  broadcastState();
+  updateLobbyUI();
+}
+
+function onKicked(payload) {
+  if (payload.id !== G.myId) {
+    // Another player was kicked — remove from local list and refresh lobby
+    G.players = G.players.filter(p => p.id !== payload.id);
+    updateLobbyUI();
+    return;
+  }
+  // We were kicked
+  G.kicked = true;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:999;background:rgba(6,2,14,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:Cinzel,serif';
+  overlay.innerHTML = `
+    <div style="font-size:48px">🚫</div>
+    <div style="font-size:22px;color:#c9932a;letter-spacing:2px">REMOVED FROM ROOM</div>
+    <div style="font-size:14px;color:#71717a">The host has removed you from this game.</div>
+    <button onclick="location.reload()" style="margin-top:12px;padding:12px 32px;background:rgba(201,147,42,0.12);border:1px solid rgba(201,147,42,0.4);border-radius:12px;color:#c9932a;font-family:Cinzel,serif;font-size:14px;cursor:pointer;letter-spacing:1px">Return to Menu</button>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// ── CHAT OVERLAY TOGGLE ───────────────────────────────
+function toggleChat() {
+  G.chatOpen = !G.chatOpen;
+  const overlay = $('chatOverlay');
+  const btn = $('chatToggleBtn');
+  if (G.chatOpen) {
+    overlay.classList.add('chat-open');
+    btn.classList.add('chat-active');
+    G.chatUnread = 0;
+    const badge = $('chatBadge');
+    if (badge) { badge.textContent = '0'; badge.classList.remove('visible'); }
+    // Scroll to bottom
+    const log = $('chatLog');
+    if (log) log.scrollTop = log.scrollHeight;
+  } else {
+    overlay.classList.remove('chat-open');
+    btn.classList.remove('chat-active');
   }
 }
 
@@ -408,6 +468,15 @@ function setupReveal(track) {
   $('cRoleIcon').textContent = ro.emoji;
   $('cRoleName').textContent = G.myRole;
   $('cRoleDesc').textContent = ro.desc;
+  const cExtra = $('cRoleExtra');
+  if (cExtra) {
+    if (G.myRole === 'Doctor') {
+      G.docSelfSavesLeft = 2;
+      cExtra.innerHTML = `<span style="font-size:11px;color:#71717a;letter-spacing:1px;font-family:Cinzel,serif">SELF-SAVES</span><br><span style="font-size:20px;letter-spacing:4px">❤️❤️</span>`;
+    } else {
+      cExtra.innerHTML = '';
+    }
+  }
   $('revealHdr').style.opacity = '0';
   $('ackBtn').style.opacity = '0';
   $('ackBtn').style.transform = 'translateY(16px)';
@@ -682,9 +751,30 @@ function onPhase(payload) {
     }
   }
 
+  // Close chat overlay when phase changes
+  const chatOverlay = $('chatOverlay');
+  if (chatOverlay && G.chatOpen) {
+    G.chatOpen = false;
+    chatOverlay.classList.remove('chat-open');
+    const btn = $('chatToggleBtn');
+    if (btn) btn.classList.remove('chat-active');
+  }
+
   $('phaseName').textContent = phase.name;
   $('phaseSub').textContent = phase.sub;
   $('timer-bar-wrap').classList.remove('hidden');
+
+  // Doctor hearts indicator
+  const heartsEl = $('doctorHearts');
+  if (heartsEl) {
+    if (G.myRole === 'Doctor') {
+      const filled = G.docSelfSavesLeft;
+      heartsEl.textContent = '❤️'.repeat(filled) + '🤍'.repeat(2 - filled);
+      heartsEl.style.display = 'inline';
+    } else {
+      heartsEl.style.display = 'none';
+    }
+  }
 
   // Role badge
   const ro = roleObj(G.myRole);
@@ -736,9 +826,9 @@ function buildGrid(phase) {
       `<span class="pcard-name">${p.name}</span>` +
       `<span class="pcard-sub" style="color:${subColor}">${subLabel}</span>`;
 
-    // Doctor can target themselves (self-save). Others cannot target themselves.
-    // Only allow clicking alive targets; for doctor phase, allow self too.
-    const isSelfTargetable = phase.id === 'night_doc' && isMe;
+    // Doctor can target themselves (self-save) only if self-saves remain.
+    // Others cannot target themselves.
+    const isSelfTargetable = phase.id === 'night_doc' && isMe && G.docSelfSavesLeft > 0;
     if (canAct && !G.actionSent && p.alive && (!isMe || isSelfTargetable))
       btn.onclick = () => selectP(p.id, btn);
 
@@ -773,6 +863,22 @@ function submitAction() {
   const target = G.selectedTarget || (phase?.id === 'day_discuss' ? 'skip' : null);
   if (!target) return;
   G.actionSent = true;
+
+  // Decrement doctor self-save counter when targeting self
+  if (phase?.id === 'night_doc' && G.myRole === 'Doctor' && target === G.myId) {
+    G.docSelfSavesLeft = Math.max(0, G.docSelfSavesLeft - 1);
+    const heartsEl = $('doctorHearts');
+    if (heartsEl) {
+      const filled = G.docSelfSavesLeft;
+      heartsEl.textContent = '❤️'.repeat(filled) + '🤍'.repeat(2 - filled);
+    }
+    const cExtra = $('cRoleExtra');
+    if (cExtra && cExtra.innerHTML) {
+      // update card extra if still visible
+      const span = cExtra.querySelector('span:last-child');
+      if (span) span.textContent = '❤️'.repeat(G.docSelfSavesLeft) + '🤍'.repeat(2 - G.docSelfSavesLeft);
+    }
+  }
 
   const ab = $('actionBtn');
   ab.textContent = '✓ Confirmed'; ab.disabled = true;
@@ -831,7 +937,18 @@ function appendChat(name, msg, mafiaOnly, sys) {
     const ghostTag = ghostMafia ? '<span class="ghost-label"> 👻 ghost intel</span>' : '';
     div.innerHTML = `<span class="chat-name">${name}${ghostTag}</span><div class="bubble ${cls}${ghostMafia ? ' bubble-ghost' : ''}">${msg}</div>`;
   }
-  log.appendChild(div); log.scrollTop = log.scrollHeight;
+  log.appendChild(div);
+  if (G.chatOpen) {
+    log.scrollTop = log.scrollHeight;
+  } else {
+    // Increment unread badge
+    G.chatUnread++;
+    const badge = $('chatBadge');
+    if (badge) {
+      badge.textContent = G.chatUnread > 9 ? '9+' : G.chatUnread;
+      badge.classList.add('visible');
+    }
+  }
 }
 
 // ── TIMER ─────────────────────────────────────────────

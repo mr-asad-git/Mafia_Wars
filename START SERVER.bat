@@ -1,6 +1,6 @@
 @echo off
 echo.
-echo  Starting Mafia Protocol Server...
+echo  Starting Mafia Wars Server...
 echo.
 cd /d "%~dp0"
 where node >nul 2>nul
