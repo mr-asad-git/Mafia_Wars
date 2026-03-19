@@ -97,17 +97,12 @@ const NET = {
   ws: null, sid: null,
 
   connect(onReady) {
-    const proto  = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host   = location.hostname || 'localhost';
-    // In production (deployed), Render/Railway proxy WS on the same port as HTTP (80/443)
-    // In local dev (localhost / LAN IP), the server runs on port 8080
-    const isLocal = host === 'localhost' || /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(host);
-    const wsUrl  = isLocal ? `${proto}//${host}:8080` : `${proto}//${location.host}`;
-    try { this.ws = new WebSocket(wsUrl); }
-    catch(e) { showErr('Cannot connect to server.'); return; }
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host  = location.hostname || 'localhost';
+    try { this.ws = new WebSocket(`${proto}//${host}:8080`); }
+    catch(e) { showErr('Cannot open WebSocket connection.'); return; }
 
-    this.ws.onerror = () => showErr('Cannot reach server. Please try again shortly.');
-
+    this.ws.onerror = () => showErr('Cannot reach server — run START SERVER.bat first.');
 
     this.ws.onmessage = e => {
       const m = JSON.parse(e.data);
