@@ -1,0 +1,12 @@
+{
+  "name": "mafia-protocol-server",
+  "version": "2.0.0",
+  "description": "Mafia Protocol - LAN Game Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  }
+}
