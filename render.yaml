@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: mafia-protocol
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MAX_ROOM_SIZE
+        value: "12"
+      - key: RATE_LIMIT_MSG_PER_SEC
+        value: "30"
