@@ -271,7 +271,7 @@ function onMsg(msg) {
   else if(type === 'CHAT')       appendChat(payload.name, payload.msg, payload.mafiaOnly, false);
   else if(type === 'REPORT')     showReport(payload);
   else if(type === 'SYS')        appendChat('System', payload.msg, false, true);
-  else if(type === 'END')        showEnd(payload.winner, payload.reason, payload.players);
+  else if(type === 'END')        showEnd(payload.winner, payload.reason, payload.players, payload.mafiaWinners);
   else if(type === 'COP_RESULT' && payload.to === G.myId)
     appendChat('🔍 Intel', payload.msg, false, true);
 }
@@ -416,7 +416,15 @@ function hostAdvance() {
   // Win check
   const ma = mafiaAlive().length, to = townAlive().length;
   if(ma === 0) { hostEnd('Town', 'All Mafia eliminated! 🎉'); return; }
-  if(ma >= to) { hostEnd('Mafia', 'Mafia outnumbers the town. 💀'); return; }
+  if(ma >= to) {
+    const mafiaPlayers = mafiaAlive();
+    if(mafiaPlayers.length === 1) {
+      hostEnd('Mafia', `${mafiaPlayers[0].name} wins for the Mafia! 💀`);
+    } else {
+      hostEnd('Mafia Gang', `Mafia gang wins! (${mafiaPlayers.map(p=>p.name).join(', ')}) 💀`);
+    }
+    return;
+  }
 
   // Resets for new phases
   if(phase.id === 'night_mafia') G.night = { mafiaVotes:{}, docSave:null, copTarget:null };
@@ -467,9 +475,10 @@ function hostResolveNight() {
 
   const rpt = {
     killedName:  killedP?.name || null,
-    killedRole:  killedP?.role || null,
+    // Role is intentionally hidden — no one should know which role was eliminated
     saved, aliveMafia: mafiaAlive().length, aliveTotal: alive().length,
-    aliveList: alive().map(p => ({ name:p.name, color:p.color }))
+    aliveList: alive().map(p => ({ name:p.name, color:p.color })),
+    killedId: killedP?.id || null
   };
   if(G.mode !== 'bot') NET.toAll({ type:'REPORT', payload:rpt });
   showReport(rpt);
@@ -484,7 +493,8 @@ function hostResolveDayVote() {
   }
   if(target && !tie) {
     const p = G.players.find(x => x.id===target);
-    if(p) { p.alive=false; sysMsg(`🗳️ Town voted to eliminate ${p.name} (${p.role}).`); }
+    // Role is intentionally NOT revealed in the message for secrecy
+    if(p) { p.alive=false; sysMsg(`🗳️ Town voted to eliminate ${p.name}.`); }
   } else {
     sysMsg('🗳️ Vote tied — no elimination today.');
   }
@@ -500,7 +510,11 @@ function hostAction(fromId, target) {
   const phase  = PHASES[G.phaseIdx];
   if(!phase) return;
   const sender = G.players.find(p => p.id===fromId);
-  if(!sender?.alive) return;
+  const isGhostAction = !sender?.alive && (
+    (phase.id === 'night_doc' && sender?.role === 'Doctor') ||
+    (phase.id === 'night_cop' && sender?.role === 'Detective')
+  );
+  if(!sender?.alive && !isGhostAction) return;
 
   if     (phase.id==='night_mafia' && sender.role==='Mafia')
     G.night.mafiaVotes[target] = (G.night.mafiaVotes[target]||0)+1;
@@ -517,18 +531,21 @@ function hostAction(fromId, target) {
 
 function checkComplete(phase) {
   let exp=0, got=0;
+  // For doctor/detective night phases, we check against ALL players (alive or dead)
+  // because eliminated ones auto-act via ghost turns
   if     (phase.id==='night_mafia') { exp=mafiaAlive().length; got=Object.values(G.night.mafiaVotes).reduce((a,b)=>a+b,0); }
-  else if(phase.id==='night_doc')   { exp=G.players.filter(p=>p.alive&&p.role==='Doctor').length;    got=G.night.docSave?1:0; }
-  else if(phase.id==='night_cop')   { exp=G.players.filter(p=>p.alive&&p.role==='Detective').length; got=G.night.copTarget?1:0; }
+  else if(phase.id==='night_doc')   { exp=G.players.filter(p=>p.role==='Doctor').length;    got=G.night.docSave?1:0; }
+  else if(phase.id==='night_cop')   { exp=G.players.filter(p=>p.role==='Detective').length; got=G.night.copTarget?1:0; }
   else if(phase.id==='day_discuss') { exp=alive().length; got=G.dayVoteCount; }
   if(exp>0 && got>=exp) { clearInterval(G.timer); setTimeout(hostAdvance, 800); }
 }
 
 function hostEnd(winner, reason) {
   clearInterval(G.timer);
-  const payload = { winner, reason, players:G.players };
+  const mafiaWinners = winner === 'Town' ? [] : G.players.filter(p => p.role === 'Mafia');
+  const payload = { winner, reason, players:G.players, mafiaWinners };
   if(G.mode !== 'bot') NET.toAll({ type:'END', payload });
-  showEnd(winner, reason, G.players);
+  showEnd(winner, reason, G.players, mafiaWinners);
 }
 
 // ── CLIENT: APPLY PHASE ───────────────────────────────
@@ -570,6 +587,55 @@ function onPhase(payload) {
     if(!$('s-game').classList.contains('active')) nav('game');
   }
 
+  // Show/hide eliminated overlay for this player
+  const me2 = G.players.find(p => p.id === G.myId);
+  const elimOverlay = $('eliminatedOverlay');
+  if(elimOverlay) {
+    if(me2 && !me2.alive) {
+      elimOverlay.classList.remove('hidden');
+    } else {
+      elimOverlay.classList.add('hidden');
+    }
+  }
+
+  // Ghost turn for eliminated human Doctor/Detective in multiplayer
+  // This makes the phase seem active for them without revealing their elimination
+  if(me2 && !me2.alive && !G.isHost) {
+    const isDocPhase = phase.id === 'night_doc' && G.myRole === 'Doctor';
+    const isCopPhase = phase.id === 'night_cop' && G.myRole === 'Detective';
+    if(isDocPhase || isCopPhase) {
+      const ghostDelay = (10 + Math.random() * 5) * 1000;
+      setTimeout(() => {
+        if(!G.actionSent) {
+          G.actionSent = true;
+          const aliveOthers = G.players.filter(p => p.alive && p.id !== G.myId);
+          const ghostTarget = aliveOthers[Math.floor(Math.random() * aliveOthers.length)]?.id;
+          if(ghostTarget) NET.toHost({ type:'ACTION', payload:{ target: ghostTarget } });
+        }
+      }, ghostDelay);
+    }
+  }
+
+  // Host ghost turns for eliminated human Doctor/Detective
+  if(G.isHost) {
+    const isDocPhase = phase.id === 'night_doc';
+    const isCopPhase = phase.id === 'night_cop';
+    if(isDocPhase || isCopPhase) {
+      G.players.filter(p => !p.alive && !p.bot).forEach(deadHuman => {
+        const isDoc = isDocPhase && deadHuman.role === 'Doctor';
+        const isCop = isCopPhase && deadHuman.role === 'Detective';
+        if(isDoc || isCop) {
+          const ghostDelay = (10 + Math.random() * 5) * 1000;
+          setTimeout(() => {
+            const aliveOthers = alive().filter(p => p.id !== deadHuman.id);
+            const ghostTarget = aliveOthers[Math.floor(Math.random() * aliveOthers.length)]?.id;
+            if(ghostTarget) hostAction(deadHuman.id, ghostTarget);
+          }, ghostDelay);
+        }
+      });
+    }
+  }
+
   $('phaseName').textContent = phase.name;
   $('phaseSub').textContent  = phase.sub;
   $('timer-bar-wrap').classList.remove('hidden');
@@ -599,6 +665,7 @@ function buildGrid(phase) {
   $('actionStatus').classList.add('hidden');
 
   const me     = G.players.find(p => p.id===G.myId);
+  // Eliminated players: can't act in day_discuss or mafia phase, but doctor/detective ghost turns handled by host
   const canAct = me?.alive && (phase.role==='all' || phase.role===G.myRole);
 
   G.players.forEach(p => {
@@ -623,8 +690,10 @@ function buildGrid(phase) {
       `<span class="pcard-name">${p.name}</span>` +
       `<span class="pcard-sub" style="color:${subColor}">${subLabel}</span>`;
 
-    // Only allow clicking if player can act AND target is valid AND action not yet sent
-    if(canAct && !G.actionSent && p.alive && !isMe)
+    // Doctor can target themselves (self-save). Others cannot target themselves.
+    // Only allow clicking alive targets; for doctor phase, allow self too.
+    const isSelfTargetable = phase.id === 'night_doc' && isMe;
+    if(canAct && !G.actionSent && p.alive && (!isMe || isSelfTargetable))
       btn.onclick = () => selectP(p.id, btn);
 
     grid.appendChild(btn);
@@ -745,7 +814,8 @@ function showReport(data) {
   };
 
   if(data.killedName && !data.saved)
-    add('💀',`${data.killedName} was eliminated`,`Their role: ${data.killedRole}`,'#f87171');
+    // Role intentionally hidden — secrecy is maintained so no one knows if doctor/detective was eliminated
+    add('💀',`${data.killedName} was eliminated`,`Their identity remains classified.`,'#f87171');
   else if(data.killedName && data.saved)
     add('🛡️',`${data.killedName} was targeted`,`The Doctor saved them!`,'#34d399');
   else
@@ -766,18 +836,31 @@ function showReport(data) {
 }
 
 // ── END SCREEN ────────────────────────────────────────
-function showEnd(winner, reason, players) {
+function showEnd(winner, reason, players, mafiaWinners) {
   clearInterval(G.timer);
-  _$('timer-bar-wrap').classList.add('hidden');
+  $('timer-bar-wrap').classList.add('hidden');
   nav('end');
   BGScene.setTheme('menu');
 
-  $('endTitle').textContent  = winner.toUpperCase()+' WINS';
+  const isMafiaWin = winner === 'Mafia' || winner === 'Mafia Gang';
+  $('endTitle').textContent  = isMafiaWin ? (winner === 'Mafia Gang' ? 'MAFIA GANG WINS' : 'MAFIA WINS') : 'TOWN WINS';
   $('endReason').textContent = reason;
-  $('endIcon').textContent   = winner==='Mafia'?'💀':'🏆';
-  $('endBg').style.background = winner==='Mafia'
+  $('endIcon').textContent   = isMafiaWin ? '💀' : '🏆';
+  $('endBg').style.background = isMafiaWin
     ? 'radial-gradient(ellipse at top,rgba(239,68,68,0.4),transparent 65%)'
     : 'radial-gradient(ellipse at top,rgba(16,185,129,0.4),transparent 65%)';
+
+  // Show mafia winner names prominently if mafia wins
+  const mw = mafiaWinners || [];
+  const mafiaNameEl = $('endMafiaNames');
+  if(mafiaNameEl) {
+    if(isMafiaWin && mw.length > 0) {
+      mafiaNameEl.textContent = mw.map(p=>p.name).join(' · ');
+      mafiaNameEl.classList.remove('hidden');
+    } else {
+      mafiaNameEl.classList.add('hidden');
+    }
+  }
 
   const er=$('endRoles'); er.innerHTML='';
   (players||G.players).forEach(p=>{
@@ -790,13 +873,34 @@ function showEnd(winner, reason, players) {
 
 // ── BOT AI ───────────────────────────────────────────
 function botsAct(phase) {
-  G.players.filter(p => p.bot && p.alive).forEach(bot => {
+  G.players.filter(p => p.bot).forEach(bot => {
+    // Ghost turn: eliminated doctor/detective still need to auto-act to avoid revealing their status
+    const isEliminated = !bot.alive;
+    const isSpecialNightRole = (phase.id === 'night_doc' && bot.role === 'Doctor') ||
+                               (phase.id === 'night_cop' && bot.role === 'Detective');
+
+    if(isEliminated) {
+      // Ghost turns for eliminated doctor/detective — random 10-15s delay
+      if(!isSpecialNightRole) return;
+      const ghostDelay = (10 + Math.random() * 5) * 1000;
+      setTimeout(() => {
+        // Ghost doctor: save a random alive player (so it doesn't accidentally save eliminated target)
+        // Ghost detective: investigate a random alive player
+        const aliveOthers = alive().filter(p => p.id !== bot.id);
+        const ghostTarget = aliveOthers[Math.floor(Math.random() * aliveOthers.length)]?.id;
+        if(ghostTarget) hostAction(bot.id, ghostTarget);
+      }, ghostDelay);
+      return;
+    }
+
+    // Normal alive bot logic
     if(phase.role!=='all' && phase.role!==bot.role) return;
     setTimeout(() => {
       let target=null;
       if(phase.id==='night_mafia') {
         const t=alive().filter(p=>p.role!=='Mafia'); target=t[Math.floor(Math.random()*t.length)]?.id;
       } else if(phase.id==='night_doc') {
+        // Doctor bots can also save themselves
         const t=alive(); target=t[Math.floor(Math.random()*t.length)]?.id;
       } else if(phase.id==='night_cop') {
         const t=alive().filter(p=>p.id!==bot.id); target=t[Math.floor(Math.random()*t.length)]?.id;

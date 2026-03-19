@@ -322,6 +322,18 @@
           Waiting…
         </button>
       </div>
+    </div><!-- /action panel -->
+
+    <!-- Eliminated overlay (shown in red when player is eliminated) -->
+    <div id="eliminatedOverlay" class="hidden" style="
+      position:absolute;top:0;left:0;right:0;z-index:50;
+      text-align:center;
+      padding:10px 16px;
+      background:rgba(220,38,38,0.12);
+      border-bottom:2px solid rgba(239,68,68,0.5);
+      pointer-events:none;
+    ">
+      <span style="color:#ef4444;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">⛔ ELIMINATED — Spectating to maintain secrecy</span>
     </div>
 
   </div><!-- /game -->
@@ -387,6 +399,14 @@
 
       <!-- Role reveal grid -->
       <div id="endRoles" class="flex flex-wrap gap-2 justify-center relative z-10 w-full fade-up" style="animation-delay:0.28s;max-height:140px;overflow-y:auto"></div>
+
+      <!-- Mafia winner names (shown prominently when mafia wins) -->
+      <div id="endMafiaNames" class="hidden relative z-10 fade-up" style="
+        animation-delay:0.32s;
+        font-size:18px;font-weight:700;color:#f87171;
+        letter-spacing:0.06em;text-align:center;
+        text-shadow:0 0 20px rgba(239,68,68,0.6);
+      "></div>
 
       <!-- Play again -->
       <button class="btn btn-primary relative z-10 fade-up" style="animation-delay:0.36s" onclick="location.reload()">
