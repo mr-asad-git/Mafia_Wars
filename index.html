@@ -5,7 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#05050a">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+  </link>
+  <meta name="theme-color" content="#030108">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mafia Protocol</title>
@@ -28,17 +31,21 @@
 
     <!-- ══════════════════════════════════════════
        MENU
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-menu" class="screen active justify-between py-14" style="padding-top:env(safe-area-inset-top,28px)">
 
       <!-- Logo -->
-      <div class="flex flex-col items-center gap-4 fade-up">
+      <div class="flex flex-col items-center gap-5 fade-up">
         <div class="logo-ring float">
           <div class="logo-inner">🎭</div>
         </div>
-        <div class="flex flex-col items-center gap-1 mt-1">
+        <div class="flex flex-col items-center gap-1">
           <h1 class="menu-title">MAFIA</h1>
-          <p class="menu-subtitle">· PROTOCOL ·</p>
+          <p class="menu-subtitle">· P R O T O C O L ·</p>
+          <p class="text-center mt-2"
+            style="font-size:10px;color:rgba(201,147,42,0.35);font-family:'Cinzel',serif;letter-spacing:0.12em">
+            DECEPTION · DEDUCTION · SURVIVAL
+          </p>
         </div>
       </div>
 
@@ -46,10 +53,11 @@
       <div class="flex flex-col gap-3 fade-up" style="animation-delay:0.12s">
         <div class="mode-rail" id="modeRail">
           <div class="mode-pill" id="modePill" style="width:calc(50% - 4px)"></div>
-          <button class="mode-btn active" id="btn-multi" onclick="setMode('multi')">👥 &nbsp;Play with Friends</button>
-          <button class="mode-btn" id="btn-bot" onclick="setMode('bot')">🤖 vs Bots</button>
+          <button class="mode-btn active" id="btn-multi" onclick="setMode('multi')">👥 &nbsp;Friends</button>
+          <button class="mode-btn" id="btn-bot" onclick="setMode('bot')">🤖 &nbsp;Bots</button>
         </div>
-        <p class="text-center text-xs text-zinc-600 leading-relaxed" id="modeHint">
+        <p class="text-center text-xs leading-relaxed" id="modeHint"
+          style="color:rgba(201,147,42,0.35);font-size:10px;font-family:'Cinzel',serif;letter-spacing:0.06em">
           All devices on same Wi-Fi can join via the server IP
         </p>
       </div>
@@ -57,13 +65,14 @@
       <!-- CTA Buttons -->
       <div class="flex flex-col gap-3 fade-up" style="animation-delay:0.22s">
         <button class="btn btn-primary" onclick="nav('create')">
-          <span>⚡</span><span>Initialize Server</span>
+          <span>⚜</span><span>Create a Room</span>
         </button>
         <button class="btn btn-ghost" onclick="nav('join')">
-          <span>🔗</span><span>Connect to Room</span>
+          <span>🔐</span><span>Enter a Room</span>
         </button>
-        <p class="text-center text-xs text-zinc-700 mt-2">
-          Run <span class="mono text-zinc-500">START SERVER.bat</span> before playing
+        <p class="text-center mt-2"
+          style="font-size:9px;color:rgba(201,147,42,0.25);font-family:'Cinzel',serif;letter-spacing:0.08em">
+          RUN <span style="color:rgba(201,147,42,0.5)">START SERVER.bat</span> BEFORE PLAYING
         </p>
       </div>
 
@@ -72,46 +81,60 @@
 
     <!-- ══════════════════════════════════════════
        CREATE ROOM
-  ══════════════════════════════════════════ -->
-    <div id="s-create" class="screen hidden gap-6">
+    ══════════════════════════════════════════ -->
+    <div id="s-create" class="screen hidden gap-5">
 
       <div class="flex items-center gap-4 fade-up">
         <button class="btn btn-ghost btn-sm" onclick="nav('menu')">← Back</button>
         <div>
-          <p class="text-xs text-zinc-600 uppercase tracking-widest mb-0.5">Game Setup</p>
-          <h2 class="cinzel text-xl font-bold text-white tracking-wide">Configure Room</h2>
+          <p class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:3px">
+            Game Setup</p>
+          <h2 class="cinzel text-lg font-bold tracking-wide" style="color:var(--text-gold)">Configure the Parlor</h2>
         </div>
       </div>
 
       <!-- Name -->
       <div class="inp-wrap fade-up" style="animation-delay:0.07s">
-        <label class="inp-label">Your Codename</label>
-        <input id="hostName" class="inp" type="text" placeholder="Enter alias…" maxlength="16" autocomplete="off">
+        <label class="inp-label">Your Alias</label>
+        <input id="hostName" class="inp" type="text" placeholder="Enter your name…" maxlength="16" autocomplete="off">
       </div>
 
       <!-- Sliders -->
       <div class="glass-strong rounded-2xl p-5 flex flex-col gap-5 fade-up" style="animation-delay:0.13s">
+        <div style="text-align:center;margin-bottom:-6px">
+          <p class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.45);letter-spacing:0.2em;text-transform:uppercase">Operative
+            Count</p>
+        </div>
+
         <div class="slider-row">
           <div class="slider-head">
-            <span class="slider-label">🔴 Mafias</span>
+            <span class="slider-label" style="color:#ff7766">🔴 Mafia(s)</span>
             <span id="mafiaVal" class="slider-val">2</span>
           </div>
           <input type="range" id="mafiaSlider" min="1" max="3" value="2" oninput="updateSliders()">
         </div>
-        <div class="divider"><span>Role breakdown</span></div>
+
+        <div class="divider"><span>role breakdown</span></div>
+
         <div class="slider-row">
           <div class="slider-head">
-            <span class="slider-label">⚪ Villagers</span>
+            <span class="slider-label" style="color:#d4b483">⚪ Civillians</span>
             <span id="villagerVal" class="slider-val">4</span>
           </div>
           <input type="range" id="villagerSlider" min="2" max="8" value="4" oninput="updateSliders()">
         </div>
+
         <div id="roleBreakdown" class="flex flex-wrap gap-2"></div>
-        <p class="text-xs text-zinc-700 text-center">Doctor &amp; Detective are always included</p>
+        <p
+          style="font-size:9px;color:rgba(201,147,42,0.35);text-align:center;font-family:'Cinzel',serif;letter-spacing:0.08em">
+          DOCTOR &amp; DETECTIVE ALWAYS INCLUDED
+        </p>
       </div>
 
       <button class="btn btn-primary mt-auto fade-up" style="animation-delay:0.2s" onclick="createRoom()">
-        🚀 Boot Sequence
+        ⚡ Let's Begin
       </button>
 
     </div><!-- /create -->
@@ -119,27 +142,34 @@
 
     <!-- ══════════════════════════════════════════
        JOIN ROOM
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-join" class="screen hidden">
 
       <div class="flex items-center gap-4 mb-8 fade-up">
         <button class="btn btn-ghost btn-sm" onclick="nav('menu')">← Back</button>
         <div>
-          <p class="text-xs text-zinc-600 uppercase tracking-widest mb-0.5">Access Control</p>
-          <h2 class="cinzel text-xl font-bold text-white tracking-wide">Join Room</h2>
+          <p class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:3px">
+            Access Control</p>
+          <h2 class="cinzel text-lg font-bold tracking-wide" style="color:var(--text-gold)">Enter the Room</h2>
         </div>
       </div>
 
       <div class="flex flex-col gap-8">
         <!-- Name -->
         <div class="inp-wrap fade-up" style="animation-delay:0.07s">
-          <label class="inp-label">Your Codename</label>
-          <input id="joinName" class="inp" type="text" placeholder="Enter alias…" maxlength="16" autocomplete="off">
+          <label class="inp-label">Your Alias</label>
+          <input id="joinName" class="inp" type="text" placeholder="Enter your name…" maxlength="16" autocomplete="off">
         </div>
 
         <!-- OTP -->
         <div class="flex flex-col gap-4 fade-up" style="animation-delay:0.14s">
-          <label class="inp-label text-center">Enter 4-Letter Room Code</label>
+          <div class="text-center">
+            <label class="inp-label">Room Code</label>
+            <p
+              style="font-size:9px;color:rgba(201,147,42,0.32);margin-top:6px;font-family:'Cinzel',serif;letter-spacing:0.08em">
+              ENTER THE 4-LETTER CIPHER</p>
+          </div>
           <div class="otp-wrap">
             <input class="otp-box" maxlength="1" data-idx="0" oninput="otpIn(this)" onkeydown="otpKey(event,this)"
               inputmode="text" autocomplete="off">
@@ -150,12 +180,12 @@
             <input class="otp-box" maxlength="1" data-idx="3" oninput="otpIn(this)" onkeydown="otpKey(event,this)"
               inputmode="text" autocomplete="off">
           </div>
-          <p id="joinErr" class="hidden text-sm text-red-400 text-center"></p>
+          <p id="joinErr" class="hidden text-center" style="font-size:12px;color:#ff7766"></p>
         </div>
       </div>
 
       <button class="btn btn-primary mt-auto fade-up" style="animation-delay:0.2s" onclick="joinRoom()">
-        🔗 Connect
+        🔑 Enter the Room
       </button>
 
     </div><!-- /join -->
@@ -163,7 +193,7 @@
 
     <!-- ══════════════════════════════════════════
        LOBBY
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-lobby" class="screen hidden gap-4">
 
       <!-- Room code header -->
@@ -171,7 +201,9 @@
         <div>
           <div class="flex items-center gap-2 mb-2">
             <div class="conn-dot conn-ok"></div>
-            <span class="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Room Active</span>
+            <span class="cinzel"
+              style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.2em;text-transform:uppercase">Room
+              Active</span>
           </div>
           <div class="room-code-display" id="lobbyCode">----</div>
         </div>
@@ -179,18 +211,19 @@
       </div>
 
       <!-- LAN hint -->
-      <div class="hidden glass rounded-xl px-4 py-3 text-xs text-zinc-500 leading-relaxed fade-up" id="multiHint"
-        style="animation-delay:0.07s">
-        📡 Share code <span class="mono font-bold text-white" id="hintCode"></span> with friends. They open the server
-        URL in their browser and enter this code.
+      <div class="hidden glass rounded-xl px-4 py-3 text-xs leading-relaxed fade-up" id="multiHint"
+        style="animation-delay:0.07s;color:rgba(201,147,42,0.5)">
+        📡 Share code <span class="mono font-bold" style="color:var(--gld-bright)" id="hintCode"></span> with friends.
+        They open the server URL and enter this code.
       </div>
 
       <!-- Player list -->
       <div class="glass-strong rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden fade-up"
         style="animation-delay:0.12s">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <span class="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Connected Agents</span>
-          <span class="mono text-xs text-zinc-500" id="playerCountLabel">0 / ?</span>
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid rgba(201,147,42,0.1)">
+          <span class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.2em;text-transform:uppercase">Operatives</span>
+          <span class="mono text-xs" id="playerCountLabel" style="color:rgba(201,147,42,0.6)">0 / ?</span>
         </div>
         <ul id="lobbyList" class="p-3 gap-2 flex flex-col overflow-y-auto flex-1 stagger" style="min-height:0"></ul>
       </div>
@@ -198,7 +231,7 @@
       <!-- Start button -->
       <button id="startBtn" class="btn btn-primary fade-up" style="animation-delay:0.18s" onclick="hostStartGame()"
         disabled>
-        Awaiting players…
+        Awaiting operatives…
       </button>
 
     </div><!-- /lobby -->
@@ -206,13 +239,15 @@
 
     <!-- ══════════════════════════════════════════
        CARD REVEAL
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-reveal" class="screen hidden items-center justify-center gap-6 px-6">
 
       <!-- Header -->
       <div id="revealHdr" class="text-center opacity-0" style="transition:opacity 0.8s ease">
-        <p class="text-xs text-zinc-600 uppercase tracking-widest mb-2">— Clearance Granted —</p>
-        <p class="text-sm text-zinc-400">Tap the card to reveal your assignment</p>
+        <p class="cinzel"
+          style="font-size:9px;color:rgba(201,147,42,0.45);letter-spacing:0.22em;text-transform:uppercase;margin-bottom:8px">
+          — Clearance Granted —</p>
+        <p style="font-size:13px;color:rgba(232,223,212,0.55)">Tap the card to reveal your assignment</p>
       </div>
 
       <!-- 3-D Card -->
@@ -223,16 +258,33 @@
           <div class="card-face card-back">
             <div class="card-back-pattern"></div>
             <div class="flex flex-col items-center gap-4 relative z-10">
-              <div class="w-18 h-18 rounded-full border border-zinc-800 bg-white/5 flex items-center justify-center"
-                style="width:72px;height:72px;font-size:32px">🎴</div>
+              <!-- Ornate card back symbol -->
+              <div style="
+                width:80px;height:80px;border-radius:50%;
+                border:1px solid rgba(201,147,42,0.3);
+                background:radial-gradient(circle,rgba(30,10,55,0.9),rgba(5,2,12,0.98));
+                display:flex;align-items:center;justify-content:center;
+                font-size:34px;
+                box-shadow:0 0 30px rgba(201,147,42,0.18);
+              ">🎴</div>
               <div class="text-center">
-                <p class="cinzel text-sm font-semibold text-zinc-500 tracking-widest">CLASSIFIED</p>
-                <p class="text-xs text-zinc-700 mt-1">tap to reveal</p>
+                <p class="cinzel" style="font-size:11px;color:rgba(201,147,42,0.45);letter-spacing:0.3em">CLASSIFIED</p>
+                <p
+                  style="font-size:10px;color:rgba(201,147,42,0.25);margin-top:4px;font-family:'Cinzel',serif;letter-spacing:0.1em">
+                  tap to reveal</p>
               </div>
             </div>
-            <!-- Corner suit marks -->
-            <div class="absolute top-4 left-4 text-zinc-800 text-xs font-bold cinzel tracking-widest">M·W</div>
-            <div class="absolute bottom-4 right-4 text-zinc-800 text-xs font-bold cinzel tracking-widest rotate-180">M·W
+            <!-- Corner marks -->
+            <div class="cinzel absolute top-4 left-4"
+              style="color:rgba(201,147,42,0.25);font-size:10px;letter-spacing:0.2em;font-weight:700">M·P</div>
+            <div class="cinzel absolute bottom-4 right-4 rotate-180"
+              style="color:rgba(201,147,42,0.25);font-size:10px;letter-spacing:0.2em;font-weight:700">M·P</div>
+            <!-- Gold corner ornaments -->
+            <div
+              style="position:absolute;top:12px;right:12px;width:16px;height:16px;border-top:1px solid rgba(201,147,42,0.3);border-right:1px solid rgba(201,147,42,0.3)">
+            </div>
+            <div
+              style="position:absolute;bottom:12px;left:12px;width:16px;height:16px;border-bottom:1px solid rgba(201,147,42,0.3);border-left:1px solid rgba(201,147,42,0.3)">
             </div>
           </div>
 
@@ -241,6 +293,14 @@
             <!-- Glow overlay -->
             <div class="card-glow-overlay" id="cardGlow"></div>
 
+            <!-- Corner ornaments on front -->
+            <div
+              style="position:absolute;top:10px;right:10px;width:16px;height:16px;border-top:1px solid rgba(255,255,255,0.12);border-right:1px solid rgba(255,255,255,0.12);pointer-events:none">
+            </div>
+            <div
+              style="position:absolute;bottom:10px;left:10px;width:16px;height:16px;border-bottom:1px solid rgba(255,255,255,0.12);border-left:1px solid rgba(255,255,255,0.12);pointer-events:none">
+            </div>
+
             <!-- Top corner -->
             <div class="flex items-start justify-between relative z-10">
               <div class="flex flex-col items-center gap-0.5">
@@ -248,7 +308,9 @@
                 <span id="cTopIcon" class="text-base leading-none">⭐</span>
               </div>
               <div class="text-right">
-                <p class="text-xs text-white/30 cinzel tracking-widest uppercase">Mafia Protocol</p>
+                <p class="cinzel"
+                  style="font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.2em;text-transform:uppercase">Mafia
+                  Protocol</p>
               </div>
             </div>
 
@@ -258,7 +320,8 @@
                 style="filter:drop-shadow(0 0 20px rgba(255,255,255,0.3));line-height:1"></div>
               <div class="text-center">
                 <div id="cRoleName" class="cinzel text-2xl font-black text-white tracking-wide uppercase"></div>
-                <div id="cRoleDesc" class="text-xs text-white/40 mt-1.5 uppercase tracking-widest leading-relaxed">
+                <div id="cRoleDesc" class="mt-2 uppercase tracking-widest leading-relaxed"
+                  style="font-size:9px;color:rgba(255,255,255,0.38);font-family:'Cinzel',serif;letter-spacing:0.12em">
                 </div>
               </div>
             </div>
@@ -279,7 +342,7 @@
       <button id="ackBtn" class="btn btn-primary w-52 opacity-0"
         style="transform:translateY(20px);transition:opacity 0.5s ease,transform 0.5s cubic-bezier(0.34,1.56,0.64,1)"
         onclick="ackReveal()">
-        I Understand My Role ✓
+        I Accept My Role ✓
       </button>
 
     </div><!-- /reveal -->
@@ -287,8 +350,25 @@
 
     <!-- ══════════════════════════════════════════
        GAME SCREEN
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-game" class="screen hidden p-3 gap-3" style="padding-top:8px">
+
+      <!-- Spectator Banner — shown when eliminated -->
+      <div id="eliminatedOverlay" class="hidden" style="
+        position:absolute;top:0;left:0;right:0;z-index:50;
+        text-align:center;
+        padding:8px 16px 9px;
+        pointer-events:none;
+      ">
+        <div class="flex items-center justify-center gap-2">
+          <span class="spectator-pulse" style="font-size:14px">👻</span>
+          <span class="cinzel spectator-pulse"
+            style="color:rgba(201,147,42,0.75);font-size:10px;letter-spacing:0.18em;text-transform:uppercase">
+            Spectating — You Are a Ghost
+          </span>
+          <span class="spectator-pulse" style="font-size:14px">👻</span>
+        </div>
+      </div>
 
       <!-- Phase header band -->
       <div class="phase-band" id="phaseBand">
@@ -296,11 +376,14 @@
           <span class="phase-emoji" id="phaseEmoji">🌙</span>
           <div>
             <div id="phaseName" class="cinzel text-sm font-bold text-white tracking-wide">Midnight</div>
-            <div id="phaseSub" class="text-xs text-zinc-500 mt-0.5">Awaiting decisions…</div>
+            <div id="phaseSub"
+              style="font-size:10px;color:rgba(201,147,42,0.45);margin-top:2px;font-family:'Cinzel',serif;letter-spacing:0.06em">
+              Awaiting decisions…</div>
           </div>
         </div>
         <div class="text-right flex-shrink-0">
-          <div class="text-xs text-zinc-600 uppercase tracking-widest mb-0.5">Remaining</div>
+          <div class="cinzel" style="font-size:9px;color:rgba(201,147,42,0.38);letter-spacing:0.15em;margin-bottom:2px">
+            TIME</div>
           <div id="timerTxt" class="mono text-2xl font-bold text-white leading-none tabular-nums">--:--</div>
         </div>
       </div>
@@ -308,23 +391,30 @@
       <!-- Role + Allies strip -->
       <div class="flex items-center justify-between px-1 min-h-[22px]">
         <div id="myRoleBadge"></div>
-        <div id="alliesTxt" class="text-xs font-semibold text-red-400 hidden"></div>
+        <div id="alliesTxt" class="text-xs font-semibold hidden"
+          style="color:#ff7766;font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.08em"></div>
       </div>
 
       <!-- Chat panel -->
       <div class="glass-strong rounded-2xl flex flex-col overflow-hidden" style="flex:1;min-height:0">
         <div id="chatLog" class="flex flex-col gap-2 p-3 overflow-y-auto" style="flex:1;min-height:0">
-          <div class="bubble bubble-sys">Game initialized — waiting for phase</div>
+          <div class="bubble bubble-sys">The parlor opens — awaiting phase</div>
         </div>
         <!-- Chat input -->
-        <div id="chatWrap" class="hidden border-t border-white/5 p-2 flex items-center gap-2 bg-black/20">
-          <span id="mafiaLabel" class="hidden text-xs font-bold text-red-400 px-2 shrink-0">MAFIA</span>
-          <input id="chatInp"
-            class="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-700 focus:outline-none py-1.5 px-2"
-            placeholder="Say something…" autocomplete="off">
-          <button onclick="sendChat()"
-            class="shrink-0 w-9 h-9 rounded-xl bg-white flex items-center justify-center hover:bg-zinc-100 active:scale-95 transition-all">
-            <svg width="14" height="14" fill="none" stroke="#050508" stroke-width="2.5" viewBox="0 0 24 24">
+        <div id="chatWrap" class="hidden p-2 flex items-center gap-2"
+          style="border-top:1px solid rgba(201,147,42,0.1);background:rgba(10,4,20,0.6)">
+          <span id="mafiaLabel" class="hidden text-xs font-bold px-2 shrink-0 cinzel"
+            style="color:#ff7766;letter-spacing:0.1em">SYNDICATE</span>
+          <input id="chatInp" class="flex-1 bg-transparent text-sm focus:outline-none py-1.5 px-2"
+            style="color:var(--text);caret-color:var(--gld)" placeholder="Speak your mind…" autocomplete="off">
+          <button onclick="sendChat()" style="flex-shrink:0;width:36px;height:36px;border-radius:12px;
+              background:linear-gradient(135deg,var(--gld),var(--gld-dim));
+              border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+              transition:transform 0.15s,box-shadow 0.15s;
+              box-shadow:0 0 10px rgba(201,147,42,0.3)"
+            onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 0 20px rgba(201,147,42,0.5)'"
+            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 0 10px rgba(201,147,42,0.3)'">
+            <svg width="14" height="14" fill="none" stroke="#100800" stroke-width="2.5" viewBox="0 0 24 24">
               <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z" />
             </svg>
           </button>
@@ -334,32 +424,22 @@
       <!-- Action panel -->
       <div id="actionArea" class="glass-strong rounded-2xl overflow-hidden">
         <!-- Action header -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <p id="actionPrompt" class="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Select Target</p>
-          <span id="actionStatus" class="text-xs font-bold text-emerald-400 hidden">✓ Transmitted</span>
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid rgba(201,147,42,0.08)">
+          <p id="actionPrompt" class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.18em;text-transform:uppercase">Select
+            Target</p>
+          <span id="actionStatus" class="cinzel hidden"
+            style="font-size:9px;font-weight:700;color:#4ade80;letter-spacing:0.1em">✓ CONFIRMED</span>
         </div>
         <!-- Player grid -->
         <div id="playerGrid" class="pgrid p-3" style="max-height:176px;overflow-y:auto"></div>
         <!-- Submit button -->
         <div class="px-3 pb-3">
           <button id="actionBtn" class="btn btn-primary" onclick="submitAction()" disabled
-            style="font-size:13px;padding:13px">
+            style="font-size:11px;padding:13px">
             Waiting…
           </button>
         </div>
-      </div><!-- /action panel -->
-
-      <!-- Eliminated overlay (shown in red when player is eliminated) -->
-      <div id="eliminatedOverlay" class="hidden" style="
-      position:absolute;top:0;left:0;right:0;z-index:50;
-      text-align:center;
-      padding:10px 16px;
-      background:rgba(220,38,38,0.12);
-      border-bottom:2px solid rgba(239,68,68,0.5);
-      pointer-events:none;
-    ">
-        <span style="color:#ef4444;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">⛔
-          ELIMINATED — Spectating to maintain secrecy</span>
       </div>
 
     </div><!-- /game -->
@@ -367,13 +447,18 @@
 
     <!-- ══════════════════════════════════════════
        DAWN REPORT
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-report" class="screen hidden gap-5">
 
       <!-- Header -->
       <div class="fade-up">
-        <p class="text-xs text-zinc-600 uppercase tracking-widest mb-1">🌅 Dawn Report</p>
-        <h2 class="cinzel text-2xl font-bold text-white tracking-wide">Last Night…</h2>
+        <p class="cinzel"
+          style="font-size:9px;color:rgba(201,147,42,0.45);letter-spacing:0.22em;text-transform:uppercase;margin-bottom:6px">
+          🌅 Dawn Report</p>
+        <h2 class="cinzel text-2xl font-bold tracking-wide" style="color:var(--text-gold)">Last Night…</h2>
+        <p
+          style="font-size:11px;color:rgba(201,147,42,0.35);margin-top:4px;font-family:'Cinzel',serif;letter-spacing:0.06em">
+          The parlor reveals its secrets at dawn</p>
       </div>
 
       <!-- Event cards -->
@@ -382,15 +467,17 @@
       <!-- Survivor list -->
       <div class="glass-strong rounded-2xl p-4 flex flex-col gap-3 fade-up">
         <div class="flex items-center gap-2">
-          <span class="text-sm">🫀</span>
-          <p class="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Still Alive</p>
+          <span style="font-size:14px">🫀</span>
+          <p class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.2em;text-transform:uppercase">Still
+            Breathing</p>
         </div>
         <div id="survivorList" class="flex flex-wrap gap-2"></div>
       </div>
 
       <!-- Continue (non-host only) -->
       <button id="rptBtn" class="btn btn-ghost hidden fade-up" onclick="nav('game')">
-        Continue to Game →
+        Return to the Parlor →
       </button>
 
     </div><!-- /report -->
@@ -398,43 +485,56 @@
 
     <!-- ══════════════════════════════════════════
        END SCREEN
-  ══════════════════════════════════════════ -->
+    ══════════════════════════════════════════ -->
     <div id="s-end" class="screen hidden items-center justify-center px-3">
 
       <div class="glass-strong rounded-3xl p-8 w-full flex flex-col items-center gap-6 relative overflow-hidden">
 
         <!-- Radial glow bg -->
         <div class="absolute inset-0 pointer-events-none" id="endBg" style="transition:background 0.8s ease"></div>
-        <!-- Shimmer top line -->
-        <div class="absolute top-0 left-0 right-0 h-px"
-          style="background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)"></div>
+
+        <!-- Gold shimmer top line -->
+        <div class="absolute top-0 left-0 right-0 h-px pointer-events-none"
+          style="background:linear-gradient(90deg,transparent,rgba(201,147,42,0.5),transparent)"></div>
+        <!-- Corner ornaments -->
+        <div
+          style="position:absolute;top:14px;left:14px;width:20px;height:20px;border-top:1px solid rgba(201,147,42,0.3);border-left:1px solid rgba(201,147,42,0.3);pointer-events:none">
+        </div>
+        <div
+          style="position:absolute;top:14px;right:14px;width:20px;height:20px;border-top:1px solid rgba(201,147,42,0.3);border-right:1px solid rgba(201,147,42,0.3);pointer-events:none">
+        </div>
+        <div
+          style="position:absolute;bottom:14px;left:14px;width:20px;height:20px;border-bottom:1px solid rgba(201,147,42,0.3);border-left:1px solid rgba(201,147,42,0.3);pointer-events:none">
+        </div>
+        <div
+          style="position:absolute;bottom:14px;right:14px;width:20px;height:20px;border-bottom:1px solid rgba(201,147,42,0.3);border-right:1px solid rgba(201,147,42,0.3);pointer-events:none">
+        </div>
 
         <!-- Icon -->
         <div class="end-icon-wrap relative z-10" id="endIcon"></div>
 
         <!-- Result text -->
         <div class="text-center relative z-10 fade-up" style="animation-delay:0.15s">
-          <p class="text-xs text-zinc-600 uppercase tracking-widest mb-2">— Result —</p>
+          <p class="cinzel"
+            style="font-size:9px;color:rgba(201,147,42,0.45);letter-spacing:0.25em;text-transform:uppercase;margin-bottom:8px">
+            — Final Verdict —</p>
           <h2 class="end-winner-text" id="endTitle">---</h2>
-          <p id="endReason" class="text-sm text-zinc-400 mt-3 leading-relaxed"></p>
+          <p id="endReason" class="mt-3 leading-relaxed" style="font-size:13px;color:rgba(232,223,212,0.55)"></p>
         </div>
 
         <!-- Divider -->
         <div class="divider w-full relative z-10 fade-up" style="animation-delay:0.22s">
-          <span>Player Roles</span>
+          <span>Operative Roles Revealed</span>
         </div>
 
         <!-- Role reveal grid -->
         <div id="endRoles" class="flex flex-wrap gap-2 justify-center relative z-10 w-full fade-up"
           style="animation-delay:0.28s;max-height:140px;overflow-y:auto"></div>
 
-        <!-- Mafia winner names (shown prominently when mafia wins) -->
-        <div id="endMafiaNames" class="hidden relative z-10 fade-up" style="
-        animation-delay:0.32s;
-        font-size:18px;font-weight:700;color:#f87171;
-        letter-spacing:0.06em;text-align:center;
-        text-shadow:0 0 20px rgba(239,68,68,0.6);
-      "></div>
+        <!-- Mafia winner names -->
+        <div id="endMafiaNames" class="hidden relative z-10 fade-up cinzel" style="animation-delay:0.32s;font-size:18px;font-weight:700;color:#ff7766;
+          letter-spacing:0.06em;text-align:center;
+          text-shadow:0 0 20px rgba(192,57,43,0.6),0 0 60px rgba(192,57,43,0.3)"></div>
 
         <!-- Play again -->
         <button class="btn btn-primary relative z-10 fade-up" style="animation-delay:0.36s" onclick="location.reload()">
