@@ -57,6 +57,39 @@ const roleObj    = id => R[id] || R.Villager;
 const mkAv       = (name, color) =>
   `<div class="avatar" style="background:${color}">${(name||'?')[0].toUpperCase()}</div>`;
 
+// ── AUDIO ─────────────────────────────────────────────
+const BGM_TRACKS = [
+  'music/background/Mission-Impossible.mp3',
+  'music/background/song1.mp3',
+  'music/background/song2.mp3',
+  'music/background/song3.mp3',
+  'music/background/song4.mp3'
+];
+function playBgMusic(track) {
+  const bgm = $('bgm');
+  if(!bgm || !track) return;
+  if(bgm.src && bgm.src.endsWith(track)) {
+    if(bgm.paused) bgm.play().catch(()=>{});
+  } else {
+    bgm.src = track;
+    bgm.volume = 0.4;
+    bgm.play().catch(()=>{});
+  }
+}
+function playKillSound() {
+  const bgm = $('bgm');
+  const sfx = $('killSfx');
+  if(sfx) {
+    if(bgm) bgm.volume = 0.1;
+    sfx.currentTime = 0;
+    sfx.volume = 1.0;
+    sfx.play().catch(()=>{});
+    setTimeout(() => {
+      if(bgm) bgm.volume = 0.4;
+    }, 4000); // 4 seconds ducking
+  }
+}
+
 // ── WEBSOCKET NETWORK ─────────────────────────────────
 // FIX: toAll/toHost wrap the game message as `payload`
 // to avoid overwriting the routing `type` field.
@@ -270,7 +303,7 @@ function onMsg(msg) {
   else if(type === 'PHASE')      onPhase(payload);
   else if(type === 'CHAT')       appendChat(payload.name, payload.msg, payload.mafiaOnly, false);
   else if(type === 'REPORT')     showReport(payload);
-  else if(type === 'SYS')        appendChat('System', payload.msg, false, true);
+  else if(type === 'SYS')        { appendChat('System', payload.msg, false, true); if(payload.isKill) playKillSound(); }
   else if(type === 'END')        showEnd(payload.winner, payload.reason, payload.players, payload.mafiaWinners);
   else if(type === 'COP_RESULT' && payload.to === G.myId)
     appendChat('🔍 Intel', payload.msg, false, true);
@@ -335,10 +368,11 @@ function hostStartGame() {
   G.acksNeeded = G.players.length;
   G.acksGot    = 0;
   G.phaseIdx   = -1;
+  G.currentBgm = BGM_TRACKS[Math.floor(Math.random() * BGM_TRACKS.length)];
 
   // Broadcast START to all clients with full player+role list
-  if(G.mode !== 'bot') NET.toAll({ type:'START', payload:{ players:G.players } });
-  setupReveal(); // host reveals own card (bots skip reveal)
+  if(G.mode !== 'bot') NET.toAll({ type:'START', payload:{ players:G.players, bgm: G.currentBgm } });
+  setupReveal(G.currentBgm); // host reveals own card (bots skip reveal)
 }
 
 function onStart(payload) {
@@ -347,11 +381,13 @@ function onStart(payload) {
   const me  = G.players.find(pl => pl.isMe);
   if(!me) { console.error('onStart: could not find self in player list', G.myId, payload.players); return; }
   G.myRole = me.role;
-  setupReveal();
+  G.currentBgm = payload.bgm;
+  setupReveal(G.currentBgm);
 }
 
 // ── CARD REVEAL ───────────────────────────────────────
-function setupReveal() {
+function setupReveal(track) {
+  if(track) playBgMusic(track);
   const me  = G.players.find(p => p.id === G.myId);
   if(!me)   { console.error('setupReveal: no me'); return; }
   G.myRole  = me.role;
@@ -427,7 +463,7 @@ function hostAdvance() {
   }
 
   // Resets for new phases
-  if(phase.id === 'night_mafia') G.night = { mafiaVotes:{}, docSave:null, copTarget:null };
+  if(phase.id === 'night_mafia') G.night = { mafiaVotes:{}, docSave:null, copTarget:null, docGhost:false, copGhost:false };
   if(phase.id === 'day_discuss') { G.dayVotes={}; G.dayVoteCount=0; }
 
   // Night resolution before day_report
@@ -494,15 +530,16 @@ function hostResolveDayVote() {
   if(target && !tie) {
     const p = G.players.find(x => x.id===target);
     // Role is intentionally NOT revealed in the message for secrecy
-    if(p) { p.alive=false; sysMsg(`🗳️ Town voted to eliminate ${p.name}.`); }
+    if(p) { p.alive=false; sysMsg(`🗳️ Town voted to eliminate ${p.name}.`, true); }
   } else {
     sysMsg('🗳️ Vote tied — no elimination today.');
   }
 }
 
-function sysMsg(msg) {
-  if(G.mode !== 'bot') NET.toAll({ type:'SYS', payload:{ msg } });
+function sysMsg(msg, isKill=false) {
+  if(G.mode !== 'bot') NET.toAll({ type:'SYS', payload:{ msg, isKill } });
   appendChat('System', msg, false, true);
+  if(isKill) playKillSound();
 }
 
 // ── HOST ACTION RECORDING ─────────────────────────────
@@ -518,10 +555,14 @@ function hostAction(fromId, target) {
 
   if     (phase.id==='night_mafia' && sender.role==='Mafia')
     G.night.mafiaVotes[target] = (G.night.mafiaVotes[target]||0)+1;
-  else if(phase.id==='night_doc' && sender.role==='Doctor')
-    G.night.docSave = target;
-  else if(phase.id==='night_cop' && sender.role==='Detective')
-    G.night.copTarget = { copId:fromId, target };
+  else if(phase.id==='night_doc' && sender.role==='Doctor') {
+    if(isGhostAction) G.night.docGhost = true;
+    else G.night.docSave = target;
+  }
+  else if(phase.id==='night_cop' && sender.role==='Detective') {
+    if(isGhostAction) G.night.copGhost = true;
+    else G.night.copTarget = { copId:fromId, target };
+  }
   else if(phase.id==='day_discuss')
     { if(target!=='skip') G.dayVotes[target]=(G.dayVotes[target]||0)+1; G.dayVoteCount++; }
   else return;
@@ -534,8 +575,8 @@ function checkComplete(phase) {
   // For doctor/detective night phases, we check against ALL players (alive or dead)
   // because eliminated ones auto-act via ghost turns
   if     (phase.id==='night_mafia') { exp=mafiaAlive().length; got=Object.values(G.night.mafiaVotes).reduce((a,b)=>a+b,0); }
-  else if(phase.id==='night_doc')   { exp=G.players.filter(p=>p.role==='Doctor').length;    got=G.night.docSave?1:0; }
-  else if(phase.id==='night_cop')   { exp=G.players.filter(p=>p.role==='Detective').length; got=G.night.copTarget?1:0; }
+  else if(phase.id==='night_doc')   { exp=G.players.filter(p=>p.role==='Doctor').length;    got=(G.night.docSave||G.night.docGhost)?1:0; }
+  else if(phase.id==='night_cop')   { exp=G.players.filter(p=>p.role==='Detective').length; got=(G.night.copTarget||G.night.copGhost)?1:0; }
   else if(phase.id==='day_discuss') { exp=alive().length; got=G.dayVoteCount; }
   if(exp>0 && got>=exp) { clearInterval(G.timer); setTimeout(hostAdvance, 800); }
 }
@@ -813,10 +854,11 @@ function showReport(data) {
     $('rptItems').appendChild(d);
   };
 
-  if(data.killedName && !data.saved)
+  if(data.killedName && !data.saved) {
+    playKillSound();
     // Role intentionally hidden — secrecy is maintained so no one knows if doctor/detective was eliminated
     add('💀',`${data.killedName} was eliminated`,`Their identity remains classified.`,'#f87171');
-  else if(data.killedName && data.saved)
+  } else if(data.killedName && data.saved)
     add('🛡️',`${data.killedName} was targeted`,`The Doctor saved them!`,'#34d399');
   else
     add('🌙','No casualties tonight','Mafia failed to agree on a target','#a1a1aa');
