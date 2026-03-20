@@ -48,7 +48,7 @@ const BGScene = (() => {
       ],
       fog: { color: 0x010210, near: 10, far: 24 }
     },
-    Villager: {
+    Civillian: {
       bg: 0x050508,
       layers: [
         { color: 0xc8b880, count: 350, size: 0.032, speed: 0.004, spread: 20, drift: 0.006 },

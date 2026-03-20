@@ -8,13 +8,13 @@ const R = {
   Mafia: { letter: 'M', emoji: '🔴', css: 'tag-mafia', desc: 'Eliminate the town each night.' },
   Doctor: { letter: 'D', emoji: '💚', css: 'tag-doctor', desc: 'Save one player from Mafia each night.' },
   Detective: { letter: 'C', emoji: '🔵', css: 'tag-detective', desc: 'Secretly investigate one player per night.' },
-  Villager: { letter: 'V', emoji: '⚪', css: 'tag-villager', desc: 'Find and vote out all Mafia members.' }
+  Civillian: { letter: 'V', emoji: '⚪', css: 'tag-civillian', desc: 'Find and vote out all Mafia members.' }
 };
 
 // ── PHASES ────────────────────────────────────────────
 const PHASES = [
-  { id: 'night_mafia', name: '🌑 Midnight', sub: 'Syndicate chooses a target', role: 'Mafia', time: 60, act: true },
-  { id: 'night_doc', name: '🌒 1:00 AM', sub: 'Medic chooses who to protect', role: 'Doctor', time: 60, act: true },
+  { id: 'night_mafia', name: '🌑 Midnight', sub: 'Mafia chooses a target', role: 'Mafia', time: 60, act: true },
+  { id: 'night_doc', name: '🌒 1:00 AM', sub: 'Doctor chooses who to protect', role: 'Doctor', time: 60, act: true },
   { id: 'night_cop', name: '🌓 2:00 AM', sub: 'Detective investigates a player', role: 'Detective', time: 60, act: true },
   { id: 'day_report', name: '🌅 Dawn', sub: 'Night results revealed to all', role: 'none', time: 10, act: false },
   { id: 'day_discuss', name: '☀️ Town Square', sub: 'Discuss & vote — 2 minutes', role: 'all', time: 120, act: true }
@@ -32,7 +32,7 @@ const PHASE_STYLE = {
 // ── STATE ─────────────────────────────────────────────
 const G = {
   mode: 'multi', isHost: false, myName: '', myId: '', roomCode: '',
-  settings: { mafia: 2, villager: 4 },
+  settings: { mafia: 2, civillian: 4 },
   players: [], myRole: null, phaseIdx: -1,
   timer: null, timeLeft: 0,
   selectedTarget: null, actionSent: false,
@@ -56,7 +56,7 @@ const townAlive = () => G.players.filter(p => p.alive && p.role !== 'Mafia');
 const uid = () => Math.random().toString(36).slice(2, 9);
 const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
 const getColor = i => COLORS[i % COLORS.length];
-const roleObj = id => R[id] || R.Villager;
+const roleObj = id => R[id] || R.Civillian;
 const mkAv = (name, color) =>
   `<div class="avatar" style="background:${color}">${(name || '?')[0].toUpperCase()}</div>`;
 
@@ -180,15 +180,15 @@ function setMode(m) {
 
 // ── SLIDER UI ─────────────────────────────────────────
 function updateSliders() {
-  const m = +$('mafiaSlider').value, v = +$('villagerSlider').value;
-  G.settings.mafia = m; G.settings.villager = v;
+  const m = +$('mafiaSlider').value, v = +$('civillianSlider').value;
+  G.settings.mafia = m; G.settings.civillian = v;
   $('mafiaVal').textContent = m;
-  $('villagerVal').textContent = v;
+  $('civillianVal').textContent = v;
   $('roleBreakdown').innerHTML =
     `<span class="tag tag-mafia">${m} Mafia</span>` +
     `<span class="tag tag-doctor">1 Doctor</span>` +
     `<span class="tag tag-detective">1 Detective</span>` +
-    `<span class="tag tag-villager">${v} Villager${v > 1 ? 's' : ''}</span>` +
+    `<span class="tag tag-civillian">${v} Civillian${v > 1 ? 's' : ''}</span>` +
     `<span class="tag tag-neutral">= ${m + v + 2} players</span>`;
 }
 
@@ -218,7 +218,7 @@ function createRoom() {
   const name = $('hostName').value.trim() || 'Host';
   G.myName = name; G.isHost = true;
   G.settings.mafia = +$('mafiaSlider').value;
-  G.settings.villager = +$('villagerSlider').value;
+  G.settings.civillian = +$('civillianSlider').value;
   G.roomCode = genCode();
   G.players = [{ id: '__pending__', name, role: null, alive: true, color: getColor(0), bot: false }];
 
@@ -226,7 +226,7 @@ function createRoom() {
     // Bot mode: no server needed
     G.myId = uid();
     G.players[0].id = G.myId;
-    const total = G.settings.mafia + G.settings.villager + 2;
+    const total = G.settings.mafia + G.settings.civillian + 2;
     for (let i = 0; i < total - 1; i++)
       G.players.push({ id: uid(), name: BOT_NAMES[i % BOT_NAMES.length], role: null, alive: true, color: getColor(i + 1), bot: true });
     openLobby();
@@ -293,10 +293,17 @@ function onMsg(msg) {
       return;
     }
     if (type === 'CHAT') {
-      // Relay received client chat to everyone else
       NET.toAll({ type: 'CHAT', payload });
-      // Show it locally on host too
       appendChat(payload.name, payload.msg, payload.mafiaOnly, false);
+      return;
+    }
+    if (type === 'MAFIA_SELECT') {
+      const sender = G.players.find(p => p.id === from);
+      if (sender?.role === 'Mafia') {
+        const relayed = { fromId: from, fromName: sender.name, targetId: payload.targetId };
+        NET.toAll({ type: 'MAFIA_SELECT', payload: relayed });
+        showMafiaTarget(from, sender.name, payload.targetId); // apply on host locally
+      }
       return;
     }
   }
@@ -312,6 +319,9 @@ function onMsg(msg) {
   else if (type === 'COP_RESULT' && payload.to === G.myId)
     appendChat('🔍 Intel', payload.msg, false, true);
   else if (type === 'KICKED') onKicked(payload);
+  else if (type === 'VOTE_TALLY') showVoteTally(payload.votes);
+  else if (type === 'RESTART') onRestart(payload);
+  else if (type === 'MAFIA_SELECT') showMafiaTarget(payload.fromId, payload.fromName, payload.targetId);
 }
 
 // ── STATE BROADCAST FROM HOST ─────────────────────────
@@ -325,7 +335,7 @@ function syncState(p) {
 }
 
 // ── LOBBY UI ─────────────────────────────────────────
-function totalP() { return G.settings.mafia + G.settings.villager + 2; }
+function totalP() { return G.settings.mafia + G.settings.civillian + 2; }
 
 function updateLobbyUI() {
   const list = $('lobbyList');
@@ -419,7 +429,7 @@ function hostStartGame() {
   const pool = [];
   for (let i = 0; i < G.settings.mafia; i++) pool.push('Mafia');
   pool.push('Doctor', 'Detective');
-  for (let i = 0; i < G.settings.villager; i++) pool.push('Villager');
+  for (let i = 0; i < G.settings.civillian; i++) pool.push('Civillian');
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));[pool[i], pool[j]] = [pool[j], pool[i]];
   }
@@ -453,12 +463,13 @@ function setupReveal(track) {
   G.myRole = me.role;
   const ro = roleObj(G.myRole);
   cardFlipped = false;
+  $('cardBody').classList.remove('flipped');
 
   nav('reveal');
   BGScene.setTheme(G.myRole); // role-specific environment on reveal
 
   // Accent color derived from role
-  const accentMap = { Mafia: 'rgba(239,68,68,0.2)', Doctor: 'rgba(16,185,129,0.2)', Detective: 'rgba(59,130,246,0.2)', Villager: 'rgba(161,161,170,0.15)' };
+  const accentMap = { Mafia: 'rgba(239,68,68,0.2)', Doctor: 'rgba(16,185,129,0.2)', Detective: 'rgba(59,130,246,0.2)', Civillian: 'rgba(161,161,170,0.15)' };
   const acc = accentMap[G.myRole] || 'rgba(255,255,255,0.08)';
 
   $('cardFront').style.background = `linear-gradient(145deg, ${acc}, #060608 70%)`;
@@ -565,12 +576,15 @@ function hostResolveNight() {
     killedP = G.players.find(p => p.id === killed);
     if (killedP) killedP.alive = false;
   }
+  const savedP = saved ? G.players.find(p => p.id === killed) : null;
 
-  // Detective private result
+  // Detective result — private message + dawn report flag
+  let detectiveFoundMafia = false;
   if (G.night.copTarget) {
     const { copId, target } = G.night.copTarget;
     const t = G.players.find(p => p.id === target);
     const cop = G.players.find(p => p.id === copId);
+    if (t) detectiveFoundMafia = t.role === 'Mafia';
     if (t && cop && !cop.bot) {
       const r = t.role === 'Mafia' ? `⚠️ ${t.name} is MAFIA!` : `✅ ${t.name} is clean (${t.role})`;
       if (cop.id === G.myId) appendChat('🔍 Intel', r, false, true);
@@ -581,7 +595,9 @@ function hostResolveNight() {
   const rpt = {
     killedName: killedP?.name || null,
     // Role is intentionally hidden — no one should know which role was eliminated
-    saved, aliveMafia: mafiaAlive().length, aliveTotal: alive().length,
+    saved, doctorSavedName: savedP?.name || null,
+    detectiveFoundMafia,
+    aliveMafia: mafiaAlive().length, aliveTotal: alive().length,
     aliveList: alive().map(p => ({ name: p.name, color: p.color })),
     killedId: killedP?.id || null
   };
@@ -646,7 +662,11 @@ function checkComplete(phase) {
   else if (phase.id === 'night_doc') { exp = G.players.filter(p => p.role === 'Doctor').length; got = (G.night.docSave || G.night.docGhost) ? 1 : 0; }
   else if (phase.id === 'night_cop') { exp = G.players.filter(p => p.role === 'Detective').length; got = (G.night.copTarget || G.night.copGhost) ? 1 : 0; }
   else if (phase.id === 'day_discuss') { exp = alive().length; got = G.dayVoteCount; }
-  if (exp > 0 && got >= exp) { clearInterval(G.timer); setTimeout(hostAdvance, 800); }
+  if (exp > 0 && got >= exp) {
+    clearInterval(G.timer);
+    if (phase.id === 'day_discuss') hostShowVotesAndAdvance();
+    else setTimeout(hostAdvance, 800);
+  }
 }
 
 function hostEnd(winner, reason) {
@@ -789,7 +809,10 @@ function onPhase(payload) {
 
   buildGrid(phase);
   updateChatUI(phase);
-  if (phase.id !== 'day_report') startTimer(phase.time, phase.id);
+  if (phase.id !== 'day_report') {
+    startTimer(phase.time, phase.id);
+    showPhasePopup(phase);
+  }
 }
 
 // ── PLAYER GRID ───────────────────────────────────────
@@ -809,13 +832,15 @@ function buildGrid(phase) {
     const isAlly = G.myRole === 'Mafia' && p.role === 'Mafia' && !isMe;
 
     const btn = document.createElement('button');
+    btn.dataset.pid = p.id;
+    btn.style.position = 'relative';
     btn.className = 'pcard w-full' +
       (!p.alive ? ' pcard-dead' : '') +
       (isMe ? ' pcard-me' : '') +
       (isAlly ? ' pcard-ally' : '');
 
     const subLabel = !p.alive ? '💀 Out'
-      : isAlly ? '🔴 Syndicate'
+      : isAlly ? '🔴 Mafia'
         : isMe ? '👤 You'
           : '· Agent ·';
 
@@ -855,6 +880,29 @@ function selectP(id, btn) {
   const ab = $('actionBtn');
   ab.textContent = PHASES[G.phaseIdx]?.id === 'day_discuss' ? 'Cast Vote ✓' : 'Confirm Target ✓';
   ab.disabled = false;
+
+  // Feature 9: broadcast mafia selection to syndicate partners (multi mode only)
+  const phase = PHASES[G.phaseIdx];
+  if (phase?.id === 'night_mafia' && G.myRole === 'Mafia' && G.mode !== 'bot') {
+    if (G.isHost) {
+      NET.toAll({ type: 'MAFIA_SELECT', payload: { fromId: G.myId, fromName: G.myName, targetId: id } });
+      // host applies locally via showMafiaTarget — but own selection is skipped there, which is correct
+    } else {
+      NET.toHost({ type: 'MAFIA_SELECT', payload: { targetId: id } });
+    }
+  }
+}
+
+function showMafiaTarget(fromId, fromName, targetId) {
+  if (G.myRole !== 'Mafia') return;        // only visible to syndicate
+  if (fromId === G.myId) return;           // own selection shown via .selected class
+  document.querySelectorAll(`.msel-${fromId}`).forEach(el => el.remove());
+  const card = document.querySelector(`[data-pid="${targetId}"]`);
+  if (!card) return;
+  const ind = document.createElement('div');
+  ind.className = `mafia-sel-indicator msel-${fromId}`;
+  ind.textContent = `🔴 ${fromName}`;
+  card.appendChild(ind);
 }
 
 function submitAction() {
@@ -965,7 +1013,13 @@ function startTimer(secs, phaseId) {
     bar.style.width = pct + '%';
     // Low-time flash overrides phase color
     bar.style.background = pct < 20 ? '#ef4444' : pct < 40 ? '#f59e0b' : G.timerColor;
-    if (G.timeLeft <= 0) { clearInterval(G.timer); if (G.isHost && phaseId !== 'day_report') hostAdvance(); }
+    if (G.timeLeft <= 0) {
+      clearInterval(G.timer);
+      if (G.isHost && phaseId !== 'day_report') {
+        if (phaseId === 'day_discuss') hostShowVotesAndAdvance();
+        else hostAdvance();
+      }
+    }
   }, 1000);
 }
 
@@ -983,12 +1037,15 @@ function showReport(data) {
 
   if (data.killedName && !data.saved) {
     playKillSound();
-    // Role intentionally hidden — secrecy is maintained so no one knows if doctor/detective was eliminated
     add('💀', `${data.killedName} was eliminated`, `Their identity remains classified.`, '#f87171');
-  } else if (data.killedName && data.saved)
-    add('🛡️', `${data.killedName} was targeted`, `The Doctor saved them!`, '#34d399');
-  else
+  } else if (data.saved) {
+    add('💊', `Doctor Rescued ${data.doctorSavedName || 'an Agent'}`, `The Medic shielded them from elimination`, '#34d399');
+  } else {
     add('🌙', 'No casualties tonight', 'Mafia failed to agree on a target', '#a1a1aa');
+  }
+
+  if (data.detectiveFoundMafia)
+    add('🔍', 'Detective Identified Mafia', 'A suspect has been confirmed as a Syndicate member', '#60a5fa');
 
   add('🔴', `${data.aliveMafia} Mafia still active`, `${data.aliveTotal} players remaining`, '#d4d4d8');
 
@@ -1039,6 +1096,83 @@ function showEnd(winner, reason, players, mafiaWinners) {
     d.innerHTML = `${ro.emoji} ${p.name} <span style="color:#52525b">${p.role}</span>`;
     er.appendChild(d);
   });
+}
+
+// ── PHASE POPUP (feature 4 & 5) ──────────────────────
+const PHASE_POPUP = {
+  night_mafia: { icon: '🔴', title: "Mafia's Turn",    sub: "Mafia chooses tonight's target",    bg: 'rgba(239,68,68,0.14)',   border: 'rgba(239,68,68,0.38)',   color: '#f87171' },
+  night_doc:   { icon: '💚', title: "Doctor's Turn",   sub: 'Doctor selects a player to protect',     bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.38)',  color: '#34d399' },
+  night_cop:   { icon: '🔵', title: "Detective's Turn", sub: 'Investigate a suspect tonight',         bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.38)',  color: '#60a5fa' },
+  day_discuss: { icon: '🗳️', title: 'Voting Begins!',  sub: 'Town Square — speak your truth & vote', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.38)',  color: '#fbbf24' },
+};
+function showPhasePopup(phase) {
+  const existing = $('phasePopup');
+  if (existing) existing.remove();
+  const info = PHASE_POPUP[phase.id];
+  if (!info) return;
+  const popup = document.createElement('div');
+  popup.id = 'phasePopup';
+  popup.style.setProperty('--popup-bg',     info.bg);
+  popup.style.setProperty('--popup-border', info.border);
+  popup.style.setProperty('--popup-color',  info.color);
+  popup.innerHTML =
+    `<div class="phase-popup-icon">${info.icon}</div>` +
+    `<div><div class="phase-popup-title">${info.title}</div><div class="phase-popup-sub">${info.sub}</div></div>`;
+  $('s-game').appendChild(popup);
+  setTimeout(() => {
+    popup.classList.add('pop-out');
+    setTimeout(() => popup.remove(), 420);
+  }, 3200);
+}
+
+// ── VOTE TALLY DISPLAY (feature 6) ───────────────────
+function hostShowVotesAndAdvance() {
+  const tally = { ...G.dayVotes };
+  if (G.mode !== 'bot') NET.toAll({ type: 'VOTE_TALLY', payload: { votes: tally } });
+  showVoteTally(tally);
+  setTimeout(hostAdvance, 2800);
+}
+function showVoteTally(votes) {
+  G.players.forEach(p => {
+    const card = document.querySelector(`[data-pid="${p.id}"]`);
+    if (!card) return;
+    let badge = card.querySelector('.vote-badge');
+    if (!badge) { badge = document.createElement('div'); badge.className = 'vote-badge'; card.appendChild(badge); }
+    const count = votes[p.id] || 0;
+    badge.textContent = count > 0 ? `🗳️ ${count}` : 'Safe';
+    badge.classList.toggle('vote-badge-hot',  count > 0);
+    badge.classList.toggle('vote-badge-safe', count === 0);
+  });
+}
+
+// ── PLAY AGAIN / RESTART (feature 7) ─────────────────
+function playAgain() {
+  clearInterval(G.timer);
+  if (G.isHost && G.mode !== 'bot') {
+    G.players.forEach(p => { p.alive = true; p.role = null; });
+    NET.toAll({ type: 'RESTART', payload: { players: G.players } });
+  }
+  onRestart({ players: G.players });
+}
+function onRestart(payload) {
+  clearInterval(G.timer);
+  G.phaseIdx = -1;
+  if (payload?.players) G.players = payload.players.map(pl => ({ ...pl, isMe: pl.id === G.myId }));
+  G.players.forEach(p => { p.alive = true; p.role = null; });
+  G.night = { mafiaVotes: {}, docSave: null, copTarget: null };
+  G.dayVotes = {}; G.dayVoteCount = 0;
+  G.chatOpen = false; G.chatUnread = 0;
+  G.docSelfSavesLeft = 2; G.kicked = false;
+  cardFlipped = false;
+  $('cardBody')?.classList.remove('flipped');
+  document.body.classList.remove('is-spectating', 'phase-night_mafia', 'phase-night_doc', 'phase-night_cop', 'phase-day_report', 'phase-day_discuss');
+  const chatLog = $('chatLog');
+  if (chatLog) chatLog.innerHTML = '<div class="bubble bubble-sys">The parlor opens — awaiting phase</div>';
+  const badge = $('chatBadge');
+  if (badge) { badge.textContent = '0'; badge.classList.remove('visible'); }
+  const existing = $('phasePopup');
+  if (existing) existing.remove();
+  openLobby();
 }
 
 // ── BOT AI ───────────────────────────────────────────

@@ -41,23 +41,27 @@
         </div>
         <div class="flex flex-col items-center gap-1">
           <h1 class="menu-title">MAFIA</h1>
-          <p class="menu-subtitle">· P R O T O C O L ·</p>
+          <p class="menu-subtitle">· W A R S ·</p>
           <p class="text-center mt-2"
-            style="font-size:10px;color:rgba(201,147,42,0.35);font-family:'Cinzel',serif;letter-spacing:0.12em">
+            style="font-size:10px;color:rgba(255, 255, 255, 0.664);font-family:'Cinzel',serif;letter-spacing:0.12em">
             DECEPTION · DEDUCTION · SURVIVAL
           </p>
         </div>
       </div>
 
       <!-- Mode toggle -->
-      <div class="flex flex-col gap-3 fade-up" style="animation-delay:0.12s">
+      <div class="flex flex-col gap-3 fade-up " style="animation-delay:0.12s">
         <div class="mode-rail" id="modeRail">
           <div class="mode-pill" id="modePill" style="width:calc(50% - 4px)"></div>
-          <button class="mode-btn active" id="btn-multi" onclick="setMode('multi')">👥 &nbsp;Friends</button>
-          <button class="mode-btn" id="btn-bot" onclick="setMode('bot')">🤖 &nbsp;Bots</button>
+          <button class="mode-btn active" id="btn-multi" onclick="setMode('multi')">
+            <p style="font-size: 14px;">👥 &nbsp;Friends</p>
+          </button>
+          <button class="mode-btn" id="btn-bot" onclick="setMode('bot')">
+            <p style="font-size: 14px;">🤖 &nbsp;Bots</p>
+          </button>
         </div>
         <p class="text-center text-xs leading-relaxed" id="modeHint"
-          style="color:rgba(201,147,42,0.35);font-size:10px;font-family:'Cinzel',serif;letter-spacing:0.06em">
+          style="color:rgba(201, 148, 42, 0.822);font-size:10px;font-family:'Cinzel',serif;letter-spacing:0.06em">
           All devices on same Wi-Fi can join via the server IP
         </p>
       </div>
@@ -90,7 +94,7 @@
           <p class="cinzel"
             style="font-size:9px;color:rgba(201,147,42,0.5);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:3px">
             Game Setup</p>
-          <h2 class="cinzel text-lg font-bold tracking-wide" style="color:var(--text-gold)">Configure the Parlor</h2>
+          <h2 class="cinzel text-lg font-bold tracking-wide" style="color:var(--text-gold)">Configure the Room</h2>
         </div>
       </div>
 
@@ -121,9 +125,9 @@
         <div class="slider-row">
           <div class="slider-head">
             <span class="slider-label" style="color:#d4b483">⚪ Civillians</span>
-            <span id="villagerVal" class="slider-val">4</span>
+            <span id="civillianVal" class="slider-val">4</span>
           </div>
-          <input type="range" id="villagerSlider" min="2" max="8" value="4" oninput="updateSliders()">
+          <input type="range" id="civillianSlider" min="2" max="8" value="4" oninput="updateSliders()">
         </div>
 
         <div id="roleBreakdown" class="flex flex-wrap gap-2"></div>
@@ -309,8 +313,8 @@
               </div>
               <div class="text-right">
                 <p class="cinzel"
-                  style="font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.2em;text-transform:uppercase">Mafia
-                  Protocol</p>
+                  style="font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.2em;text-transform:uppercase">MAFIA
+                  WARS</p>
               </div>
             </div>
 
@@ -449,7 +453,7 @@
               Parlor</span>
             <span id="mafiaLabel" class="hidden cinzel" style="font-size:9px;font-weight:700;color:#ff7766;letter-spacing:0.12em;
               background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.3);
-              padding:2px 8px;border-radius:99px">SYNDICATE</span>
+              padding:2px 8px;border-radius:99px">MAFIA</span>
           </div>
           <button onclick="toggleChat()" style="
             width:26px;height:26px;border-radius:8px;
@@ -573,9 +577,10 @@
           text-shadow:0 0 20px rgba(192,57,43,0.6),0 0 60px rgba(192,57,43,0.3)"></div>
 
         <!-- Play again -->
-        <button class="btn btn-primary relative z-10 fade-up" style="animation-delay:0.36s" onclick="location.reload()">
-          🔄 Play Again
-        </button>
+        <div class="flex gap-3 w-full relative z-10 fade-up" style="animation-delay:0.36s">
+          <button class="btn btn-ghost flex-1" onclick="location.reload()">🏠 Main Menu</button>
+          <button class="btn btn-primary flex-1" onclick="playAgain()">🔄 Play Again</button>
+        </div>
 
       </div>
 
