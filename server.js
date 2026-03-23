@@ -15,6 +15,18 @@ const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/jav
 // ── HTTP — serve static files ─────────────────────
 const httpServer = http.createServer((req, res) => {
   let url = req.url.split('?')[0];
+
+  if (url === '/rooms') {
+    const list = [];
+    for (const [code, members] of rooms) {
+      const meta = roomMeta.get(code) || {};
+      list.push({ code, hostName: meta.hostName || 'Host', playerCount: members.size, maxPlayers: meta.maxPlayers || 8 });
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(list));
+    return;
+  }
+
   if (url === '/') url = '/index.html';
   const file = path.join(DIR, url);
   if (!file.startsWith(DIR)) { res.writeHead(403); res.end(); return; }
@@ -28,7 +40,8 @@ const httpServer = http.createServer((req, res) => {
 
 // ── WebSocket relay ───────────────────────────────
 const wss = new WebSocketServer({ server: httpServer });
-const rooms = new Map(); // code → Map<socketId, ws>
+const rooms = new Map();    // code → Map<socketId, ws>
+const roomMeta = new Map(); // code → { hostName, maxPlayers }
 let nextId = 1;
 
 wss.on('connection', ws => {
@@ -45,7 +58,7 @@ wss.on('connection', ws => {
     if (!room) return;
     room.delete(ws.sid);
     relay(ws.room, { type: 'PLAYER_DISCONNECTED', payload: { sid: ws.sid } }, ws.sid);
-    if (room.size === 0) rooms.delete(ws.room);
+    if (room.size === 0) { rooms.delete(ws.room); roomMeta.delete(ws.room); }
   });
 });
 
@@ -57,6 +70,7 @@ function handle(ws, msg) {
     if (rooms.has(code)) { reply(ws, 'ERR', { msg: 'Room already exists.' }); return; }
     const room = new Map([[ws.sid, ws]]);
     rooms.set(code, room);
+    roomMeta.set(code, { hostName: payload?.hostName || 'Host', maxPlayers: payload?.maxPlayers || 8 });
     ws.room = code;
     ws.isHost = true;
     reply(ws, 'CREATED', { sid: ws.sid });

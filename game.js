@@ -154,7 +154,7 @@ const NET = {
   // FIX: same wrapping fix
   toHost(msg) { this.raw({ type: 'RELAY_HOST', roomCode: G.roomCode, payload: msg }); },
 
-  create(code) { this.raw({ type: 'CREATE', roomCode: code }); },
+  create(code, hostName, maxPlayers) { this.raw({ type: 'CREATE', roomCode: code, payload: { hostName, maxPlayers } }); },
   join(code, payload) { this.raw({ type: 'JOIN', roomCode: code, payload }); }
 };
 
@@ -165,6 +165,8 @@ function nav(id) {
   });
   const t = $('s-' + id);
   if (t) { t.classList.remove('hidden'); t.classList.add('active'); }
+  if (id === 'join') startRoomPolling();
+  else stopRoomPolling();
 }
 
 // ── MODE TOGGLE ───────────────────────────────────────
@@ -236,7 +238,10 @@ function createRoom() {
       if (result === 'created') openLobby();
     });
     // Send CREATE after WebSocket opens
-    NET.ws.addEventListener('open', () => NET.create(G.roomCode), { once: true });
+    NET.ws.addEventListener('open', () => {
+      const maxP = G.settings.mafia + (G.settings.villager || G.settings.civillian || 4) + 2;
+      NET.create(G.roomCode, name, maxP);
+    }, { once: true });
   }
 }
 
@@ -369,7 +374,31 @@ function updateLobbyUI() {
       btn.disabled = true;
       btn.textContent = `Awaiting players (${G.players.length}/${total})…`;
     }
+
+    // Add Bot button — only in multi mode, only when room not full
+    const addBotBtn = $('addBotBtn');
+    if (addBotBtn) {
+      if (G.mode === 'multi' && G.players.length < total) {
+        addBotBtn.classList.remove('hidden');
+        addBotBtn.disabled = false;
+      } else {
+        addBotBtn.classList.add('hidden');
+      }
+    }
   }
+}
+
+function addBotToRoom() {
+  if (!G.isHost || G.players.length >= totalP()) return;
+  const usedNames = new Set(G.players.map(p => p.name));
+  const botName = BOT_NAMES.find(n => !usedNames.has(n)) || `Operative${G.players.filter(p => p.bot).length + 1}`;
+  const bot = {
+    id: uid(), name: botName, role: null, alive: true,
+    color: getColor(G.players.length), bot: true
+  };
+  G.players.push(bot);
+  broadcastState();
+  updateLobbyUI();
 }
 
 // ── KICK PLAYER ───────────────────────────────────────
@@ -496,11 +525,9 @@ function setupReveal(track) {
 
   setTimeout(() => { $('revealHdr').style.opacity = '1'; }, 500);
 
-  // Bots auto-ack after 2s
-  if (G.mode === 'bot') {
-    const bots = G.players.filter(p => p.bot);
-    G.acksGot = bots.length; // Pre-count bots
-  }
+  // Bots auto-ack — pre-count regardless of mode (works for multi+bots too)
+  const bots = G.players.filter(p => p.bot);
+  if (bots.length > 0) G.acksGot = bots.length;
 }
 
 let cardFlipped = false;
@@ -559,7 +586,7 @@ function hostAdvance() {
   if (G.mode !== 'bot') NET.toAll({ type: 'PHASE', payload: phasePayload });
   onPhase(phasePayload); // host applies locally
 
-  if (G.mode === 'bot') botsAct(phase);
+  if (G.players.some(p => p.bot)) botsAct(phase);
   if (phase.id === 'day_report')
     setTimeout(() => { if (G.isHost) hostAdvance(); }, phase.time * 1000);
 }
@@ -881,28 +908,41 @@ function selectP(id, btn) {
   ab.textContent = PHASES[G.phaseIdx]?.id === 'day_discuss' ? 'Cast Vote ✓' : 'Confirm Target ✓';
   ab.disabled = false;
 
-  // Feature 9: broadcast mafia selection to syndicate partners (multi mode only)
+  // Feature 9: show own dot immediately + broadcast to syndicate partners
   const phase = PHASES[G.phaseIdx];
-  if (phase?.id === 'night_mafia' && G.myRole === 'Mafia' && G.mode !== 'bot') {
-    if (G.isHost) {
-      NET.toAll({ type: 'MAFIA_SELECT', payload: { fromId: G.myId, fromName: G.myName, targetId: id } });
-      // host applies locally via showMafiaTarget — but own selection is skipped there, which is correct
-    } else {
-      NET.toHost({ type: 'MAFIA_SELECT', payload: { targetId: id } });
+  if (phase?.id === 'night_mafia' && G.myRole === 'Mafia') {
+    placeMafiaIndicator(G.myId, id); // show own red dot instantly
+    if (G.mode !== 'bot') {
+      if (G.isHost) {
+        NET.toAll({ type: 'MAFIA_SELECT', payload: { fromId: G.myId, fromName: G.myName, targetId: id } });
+      } else {
+        NET.toHost({ type: 'MAFIA_SELECT', payload: { targetId: id } });
+      }
     }
   }
 }
 
-function showMafiaTarget(fromId, fromName, targetId) {
-  if (G.myRole !== 'Mafia') return;        // only visible to syndicate
-  if (fromId === G.myId) return;           // own selection shown via .selected class
-  document.querySelectorAll(`.msel-${fromId}`).forEach(el => el.remove());
+// Place a single red dot on the targeted card for the given selector
+function placeMafiaIndicator(fromId, targetId) {
+  // Remove this selector's old dot from wherever it was
+  document.querySelectorAll(`.msel-${CSS.escape(fromId)}`).forEach(el => el.remove());
   const card = document.querySelector(`[data-pid="${targetId}"]`);
   if (!card) return;
-  const ind = document.createElement('div');
-  ind.className = `mafia-sel-indicator msel-${fromId}`;
-  ind.textContent = `🔴 ${fromName}`;
-  card.appendChild(ind);
+  let wrap = card.querySelector('.mafia-votes-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.className = 'mafia-votes-wrap';
+    card.appendChild(wrap);
+  }
+  const dot = document.createElement('div');
+  dot.className = `mafia-sel-indicator msel-${fromId}`;
+  wrap.appendChild(dot);
+}
+
+function showMafiaTarget(fromId, fromName, targetId) {
+  if (G.myRole !== 'Mafia') return;  // only syndicate members see this
+  if (fromId === G.myId) return;     // own dot placed instantly in selectP, skip relay echo
+  placeMafiaIndicator(fromId, targetId);
 }
 
 function submitAction() {
@@ -1220,6 +1260,57 @@ function botsAct(phase) {
       setTimeout(() => appendChat(bot.name, m[Math.floor(Math.random() * m.length)], false, false), 2000 + Math.random() * 6000);
     }
   });
+}
+
+// ── ROOM DISCOVERY ────────────────────────────────
+let roomListTimer = null;
+
+async function loadRooms() {
+  const listEl = $('roomList');
+  if (!listEl) return;
+  try {
+    const res = await fetch('/rooms');
+    const rooms = await res.json();
+    if (!rooms.length) {
+      listEl.innerHTML = '<div class="room-empty">No active rooms — establish one first</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    rooms.forEach(r => {
+      const full = r.playerCount >= r.maxPlayers;
+      const card = document.createElement('div');
+      card.className = 'room-card' + (full ? ' room-card-full' : '');
+      card.innerHTML =
+        `<div style="flex:1;min-width:0">` +
+          `<div class="cinzel" style="font-size:13px;font-weight:700;color:${full ? '#52525b' : 'var(--text-gold)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.hostName}'s Room</div>` +
+          `<div style="font-size:10px;color:${full ? '#3f3f46' : 'rgba(201,147,42,0.5)'};margin-top:2px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em">${r.playerCount}&thinsp;/&thinsp;${r.maxPlayers} operatives &middot; ${r.code}</div>` +
+        `</div>` +
+        `<button class="btn btn-ghost btn-sm room-join-btn" ${full ? 'disabled' : `onclick="quickJoin('${r.code}')"`}>${full ? 'Full' : 'Join →'}</button>`;
+      listEl.appendChild(card);
+    });
+  } catch (_) {
+    listEl.innerHTML = '<div class="room-empty">Server offline — rooms unavailable</div>';
+  }
+}
+
+function quickJoin(code) {
+  const boxes = document.querySelectorAll('.otp-box');
+  code.split('').forEach((ch, i) => {
+    if (boxes[i]) { boxes[i].value = ch; boxes[i].classList.add('filled'); }
+  });
+  const nameInp = $('joinName');
+  if (nameInp && !nameInp.value.trim()) nameInp.focus();
+}
+
+function startRoomPolling() {
+  stopRoomPolling();
+  loadRooms();
+  roomListTimer = setInterval(loadRooms, 3000);
+}
+
+function stopRoomPolling() {
+  clearInterval(roomListTimer);
+  roomListTimer = null;
 }
 
 // ── INIT ─────────────────────────────────────────────

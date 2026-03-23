@@ -1492,15 +1492,38 @@ body.is-spectating #actionArea {
 .vote-badge-hot  { background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.4); color:#f87171; }
 .vote-badge-safe { background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.3); color:#34d399; }
 
-/* ── MAFIA SELECTION INDICATOR ──────────────────── */
+/* ── MAFIA SELECTION INDICATORS ─────────────────── */
+.mafia-votes-wrap {
+  position: absolute; top: 5px; right: 5px;
+  display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end;
+  pointer-events: none; z-index: 3; max-width: 60%;
+}
 .mafia-sel-indicator {
-  position: absolute; bottom: 3px; left: 3px;
-  font-size: 9px; font-weight: 700;
-  padding: 1px 5px; border-radius: 99px;
-  background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.38);
-  color: #f87171; font-family: 'Cinzel', serif; letter-spacing: 0.03em;
-  pointer-events: none; z-index: 2; max-width: 88%; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 7px rgba(239,68,68,0.85), 0 0 14px rgba(239,68,68,0.4);
+  flex-shrink: 0;
+  animation: mafDotPop 0.25s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes mafDotPop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+
+/* ── ROOM DISCOVERY CARDS ───────────────────────── */
+.room-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(201,147,42,0.14);
+  transition: background 0.2s, border-color 0.2s;
+}
+.room-card:not(.room-card-full):hover {
+  background: rgba(201,147,42,0.07);
+  border-color: rgba(201,147,42,0.3);
+}
+.room-card-full { opacity: 0.45; pointer-events: none; }
+.room-join-btn { flex-shrink: 0; }
+.room-empty {
+  font-size: 11px; color: #52525b; text-align: center;
+  padding: 18px 0; font-family: 'Cinzel', serif; letter-spacing: 0.08em;
 }
 
 /* ── RESPONSIVE ─────────────────────────────────── */

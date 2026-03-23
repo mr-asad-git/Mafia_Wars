@@ -188,7 +188,20 @@
         </div>
       </div>
 
-      <button class="btn btn-primary mt-auto fade-up" style="animation-delay:0.2s" onclick="joinRoom()">
+      <!-- Active Rooms -->
+      <div class="flex flex-col gap-3 fade-up" style="animation-delay:0.2s">
+        <div class="flex items-center justify-between">
+          <label class="inp-label">Active Rooms</label>
+          <button onclick="loadRooms()" title="Refresh"
+            style="width:26px;height:26px;border-radius:8px;background:rgba(201,147,42,0.07);border:1px solid rgba(201,147,42,0.18);color:rgba(201,147,42,0.55);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s"
+            onmouseover="this.style.background='rgba(201,147,42,0.14)'" onmouseout="this.style.background='rgba(201,147,42,0.07)'">↺</button>
+        </div>
+        <div id="roomList" class="flex flex-col gap-2">
+          <div class="room-empty">Scanning for rooms…</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary mt-auto fade-up" style="animation-delay:0.28s" onclick="joinRoom()">
         🔑 Enter the Room
       </button>
 
@@ -231,6 +244,11 @@
         </div>
         <ul id="lobbyList" class="p-3 gap-2 flex flex-col overflow-y-auto flex-1 stagger" style="min-height:0"></ul>
       </div>
+
+      <!-- Add Bot button (host only, multi mode, shown via JS) -->
+      <button id="addBotBtn" class="btn btn-ghost hidden fade-up" style="animation-delay:0.15s" onclick="addBotToRoom()">
+        🤖 Add Bot Operative
+      </button>
 
       <!-- Start button -->
       <button id="startBtn" class="btn btn-primary fade-up" style="animation-delay:0.18s" onclick="hostStartGame()"
